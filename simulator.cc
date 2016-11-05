@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ *
  */
 
 
@@ -25,7 +25,30 @@
  #include "ns3/mobility-module.h"
  #include "ns3/config-store-module.h"
  #include "ns3/wifi-module.h"
+ #include "ns3/internet-module.h"
  #include "ns3/athstats-helper.h"
+ #include "ns3/random-variable-stream.h"
+
+
+
+
+
+
+
+
+//
+// #include "ns3/olsr-routing-protocol.h"
+// #include "ns3/olsr-helper.h"
+//
+// #include "ns3/packet-sink.h"
+// #include "ns3/packet-socket-helper.h"
+// #include "ns3/mesh-helper.h"
+// #include "ns3/config-store-module.h"
+// #include "ns3/netanim-module.h"
+
+
+
+
 
  #include <iostream>
 
@@ -131,14 +154,22 @@
    // disable fragmentation
    Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2200"));
 
+
+
+
+
    WifiHelper wifi;
    MobilityHelper mobility;
    NodeContainer stas;
    NodeContainer ap;
-   NetDeviceContainer staDevs;
+   NetDeviceContainer staDevs, apDevs;
    PacketSocketHelper packetSocket;
 
-   stas.Create (2);
+   YansWifiPhyHelper wifiPhy;
+   YansWifiChannelHelper wifiChannel;
+
+
+   stas.Create (20); //TODO
    ap.Create (1);
 
    // give packet socket powers to nodes.
@@ -146,50 +177,136 @@
    packetSocket.Install (ap);
 
    WifiMacHelper wifiMac;
-   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
-   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+   wifiPhy = YansWifiPhyHelper::Default ();
+   wifiChannel = YansWifiChannelHelper::Default ();
    wifiPhy.SetChannel (wifiChannel.Create ());
+
+
    Ssid ssid = Ssid ("wifi-default");
+
+
    wifi.SetRemoteStationManager ("ns3::ArfWifiManager");
    // setup stas.
-   wifiMac.SetType ("ns3::StaWifiMac",
-                    "Ssid", SsidValue (ssid));
+   wifiMac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid));
    staDevs = wifi.Install (wifiPhy, wifiMac, stas);
    // setup ap.
-   wifiMac.SetType ("ns3::ApWifiMac",
-                    "Ssid", SsidValue (ssid));
-   wifi.Install (wifiPhy, wifiMac, ap);
+   wifiMac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
+   apDevs = wifi.Install (wifiPhy, wifiMac, ap);
 
-   // mobility.
-   mobility.Install (stas);
+
+
+   mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                  "MinX", DoubleValue (0.0),
+                                  "MinY", DoubleValue (0.0),
+                                  "DeltaX", DoubleValue (20.0),
+                                  "DeltaY", DoubleValue (20.0),
+                                  "GridWidth", UintegerValue (5),
+                                  "LayoutType", StringValue ("RowFirst"));
+   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
    mobility.Install (ap);
+   mobility.Install (stas);
 
-   Simulator::Schedule (Seconds (1.0), &AdvancePosition, ap.Get (0));
 
-   PacketSocketAddress socket;
-   socket.SetSingleDevice (staDevs.Get (0)->GetIfIndex ());
-   socket.SetPhysicalAddress (staDevs.Get (1)->GetAddress ());
-   socket.SetProtocol (1);
+   InternetStackHelper stack;
+   stack.Install (ap);
+   stack.Install (stas);
 
-   OnOffHelper onoff ("ns3::PacketSocketFactory", Address (socket));
-   onoff.SetConstantRate (DataRate ("500kb/s"));
 
-   ApplicationContainer apps = onoff.Install (stas.Get (0));
-   apps.Start (Seconds (0.5));
-   apps.Stop (Seconds (1.0));
+    // Ipv4AddressHelper address;
+    // Ipv4InterfaceContainer wifiInterfaces;
+    // address.SetBase ("10.1.2.0", "255.255.255.0");
+    // wifiInterfaces = address.Assign(apDevs);
+    // wifiInterfaces = address.Assign(staDevs);
 
-   Simulator::Stop (Seconds (2.0));
+     InetSocketAddress socket = InetSocketAddress (Ipv4Address::GetAny(), 80);
 
-   Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacTx", MakeCallback (&DevTxTrace));
-   Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacRx", MakeCallback (&DevRxTrace));
-   //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/RxOk", MakeCallback (&PhyRxOkTrace));
-   //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/RxError", MakeCallback (&PhyRxErrorTrace));
-   //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/Tx", MakeCallback (&PhyTxTrace));
-   //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/State", MakeCallback (&PhyStateTrace));
 
-   //AthstatsHelper athstats;
-//    athstats.EnableAthstats ("athstats-sta", stas);
-//    athstats.EnableAthstats ("athstats-ap", ap);
+
+    uint32_t packets = 1500;
+
+    Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1460));
+    Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (900000));
+    Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (900000));
+
+    Address sinkLocalAddress (InetSocketAddress(Ipv4Address::GetAny(), 9));
+    PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory",sinkLocalAddress);
+
+    ApplicationContainer sinkApp = sinkHelper.Install(stas.Get(2)); //TODO value
+
+    sinkApp.Start (Seconds (0.001));
+    sinkApp.Stop (Seconds (10.0));
+
+    // Create the OnOff applications to send TCP to the server
+    OnOffHelper sourceHelper ("ns3::TcpSocketFactory", Address());
+    sourceHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"));
+    sourceHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=5.0]"));
+
+    AddressValue remoteAddress (InetSocketAddress(wifiInterfaces.GetAddress (5), 9)); //TODO value
+    sourceHelper.SetAttribute ("Remote", remoteAddress);
+    sourceHelper.SetAttribute ("DataRate", DataRateValue(DataRate("11Mbps")));
+    sourceHelper.SetAttribute ("PacketSize", UintegerValue (packets));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//    Ipv4AddressHelper address;
+//    address.SetBase ("192.168.1.0", "255.255.255.0");
+//    address.Assign (apDevs);
+//    address.Assign (staDevs);
+//
+//
+//    PacketSocketAddress socket;
+//    socket.SetSingleDevice (staDevs.Get (0)->GetIfIndex ());
+//    socket.SetPhysicalAddress (staDevs.Get (1)->GetAddress ());
+//    socket.SetProtocol (1);
+//
+//    OnOffHelper onoff ("ns3::PacketSocketFactory", Address (socket));
+//    onoff.SetConstantRate (DataRate ("500kb/s"));
+//
+//    ApplicationContainer apps = onoff.Install (stas.Get (0));
+//    apps.Start (Seconds (1.0));
+//    apps.Stop (Seconds (10.0));
+//
+//    Simulator::Stop (Seconds (10.0));
+//
+//    Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacTx", MakeCallback (&DevTxTrace));
+//    Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacRx", MakeCallback (&DevRxTrace));
+//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/RxOk", MakeCallback (&PhyRxOkTrace));
+//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/RxError", MakeCallback (&PhyRxErrorTrace));
+//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/Tx", MakeCallback (&PhyTxTrace));
+//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/State", MakeCallback (&PhyStateTrace));
+//
+//    //AthstatsHelper athstats;
+// //    athstats.EnableAthstats ("athstats-sta", stas);
+// //    athstats.EnableAthstats ("athstats-ap", ap);
+
+  //  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
    Simulator::Run ();
 
