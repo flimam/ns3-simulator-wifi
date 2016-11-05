@@ -148,7 +148,7 @@ echoClient.SetAttribute("MaxPackets", ns.core.UintegerValue(100))
 echoClient.SetAttribute("Interval", ns.core.TimeValue(ns.core.Seconds (0.4)))
 echoClient.SetAttribute("PacketSize", ns.core.UintegerValue(1024))
 
-clientApps = echoClient.Install(wifiStaNodes.Get(4)) # o Nó que vai ser o cliente, ele vai enviar os dados 
+clientApps = echoClient.Install(wifiStaNodes.Get(4)) # o Nó que vai ser o cliente, ele vai enviar os dados
 clientApps.Start(ns.core.Seconds(2.0))
 clientApps.Stop(ns.core.Seconds(20.0))
 
