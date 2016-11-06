@@ -40,6 +40,40 @@
 
 using namespace ns3;
 
+
+void funcMobility(bool bmobility, NodeContainer ap, NodeContainer nodes) {
+    MobilityHelper mobility;
+    if(bmobility){
+      //List of points
+      Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+      for (size_t i = 0; i < 40; i++) {
+        positionAlloc->Add (Vector (rand()%100, rand()%100, 0.0));
+      }
+      //Set list of points
+      mobility.SetPositionAllocator (positionAlloc);
+      //Set AP static
+      mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+      mobility.Install (ap);
+      //Set nodes with mobility
+      Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
+      mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
+      mobility.Install (nodes);
+    }else{
+      //Set local to nodes and AP
+      mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                     "MinX", DoubleValue (0.0),
+                                     "MinY", DoubleValue (0.0),
+                                     "DeltaX", DoubleValue (20.0),
+                                     "DeltaY", DoubleValue (20.0),
+                                     "GridWidth", UintegerValue (5),
+                                     "LayoutType", StringValue ("RowFirst"));
+      mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+      mobility.Install (ap);
+      mobility.Install (nodes);
+    }
+}
+
+
 /// Run single 10 seconds experiment with enabled or disabled RTS/CTS mechanism
 void experiment (bool enableCtsRts)
 {
@@ -48,21 +82,12 @@ void experiment (bool enableCtsRts)
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
 
   // 1. Create 3 nodes
-  NodeContainer nodes,ap;
+  //TODO argc argv
+  NodeContainer nodes, ap;
   ap.Create (1);
-  nodes.Create (10);
+  nodes.Create (10;
 
-  MobilityHelper mobility;
-  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (20.0),
-                                 "DeltaY", DoubleValue (20.0),
-                                 "GridWidth", UintegerValue (5),
-                                 "LayoutType", StringValue ("RowFirst"));
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility.Install (ap);
-  mobility.Install (nodes);
+  funcMobility(true, ap, nodes);
 
   YansWifiChannelHelper wifiChannel;
   // 5. Install wireless devices
