@@ -85,7 +85,7 @@ void experiment (bool enableCtsRts)
   //TODO argc argv
   NodeContainer nodes, ap;
   ap.Create (1);
-  nodes.Create (10;
+  nodes.Create (10);
 
   funcMobility(true, ap, nodes);
 
