@@ -18,7 +18,7 @@ int myRand(){
   return rand();
 }
 
-void funcMobility(bool bmobility, NodeContainer &ap, NodeContainer &nodes) {
+void funcMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
     MobilityHelper mobility;
     if(bmobility){
       //List of points
@@ -28,15 +28,15 @@ void funcMobility(bool bmobility, NodeContainer &ap, NodeContainer &nodes) {
       }
       //Set list of points
       mobility.SetPositionAllocator (positionAlloc);
-      //Set AP static
+      //Set apnode static
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-      mobility.Install (ap);
+      mobility.Install (apnode);
       //Set nodes with mobility
       Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
       mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
       mobility.Install (nodes);
     }else{
-      //Set local to nodes and AP
+      //Set local to nodes and apnode
       mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                      "MinX", DoubleValue (0.0),
                                      "MinY", DoubleValue (0.0),
@@ -45,12 +45,12 @@ void funcMobility(bool bmobility, NodeContainer &ap, NodeContainer &nodes) {
                                      "GridWidth", UintegerValue (5),
                                      "LayoutType", StringValue ("RowFirst"));
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-      mobility.Install (ap);
+      mobility.Install (apnode);
       mobility.Install (nodes);
     }
 }
 
-void funcIntallWirelessDevice(NodeContainer &ap, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
+void funcIntallWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
   // 5. Install wireless devices
   WifiHelper wifi;
   wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
@@ -69,14 +69,14 @@ void funcIntallWirelessDevice(NodeContainer &ap, NodeContainer &nodes, NetDevice
   devices = wifi.Install (wifiPhy, wifiMac, nodes);
   // setup ap.
   wifiMac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
-  apdevice = wifi.Install (wifiPhy, wifiMac, ap);
+  apdevice = wifi.Install (wifiPhy, wifiMac, apnode);
 }
 
-void funcIntallProtocolIP(NodeContainer &ap, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
+void funcIntallProtocolIP(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
   // 6. Install TCP/IP stack & assign IP addresses
   InternetStackHelper internet;
   internet.Install (nodes);
-  internet.Install (ap);
+  internet.Install (apnode);
 
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("198.162.10.0", "255.255.255.0");
@@ -112,7 +112,6 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
 
 }
 
-/// Run single 10 seconds experiment with enabled or disabled RTS/CTS mechanism
 void experiment (bool enableCtsRts)
 {
   //------------------------------------------------------------------------------
@@ -124,19 +123,19 @@ void experiment (bool enableCtsRts)
   //------------------------------------------------------------------------------
 
 
-  NodeContainer ap, nodes;
+  NodeContainer apnode, nodes;
   NetDeviceContainer apdevice, devices;
   Ipv4InterfaceContainer apdeviceIP, devicesIP;
 
   //Create nodes
-  ap.Create (1);
+  apnode.Create (1);
   nodes.Create (countNodes);
 
-  funcMobility(true, ap, nodes);  // if value TRUE, exist mobility, else, not exist mobility.
+  funcMobility(true, apnode, nodes);  // if value TRUE, exist mobility, else, not exist mobility.
 
-  funcIntallWirelessDevice(ap, nodes, apdevice, devices);
+  funcIntallWirelessDevice(apnode, nodes, apdevice, devices);
 
-  funcIntallProtocolIP(ap, nodes, apdevice, devices, apdeviceIP, devicesIP);
+  funcIntallProtocolIP(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
 
 
   // 7. Install applications: two CBR streams each saturating the channel
