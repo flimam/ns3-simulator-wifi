@@ -38,10 +38,21 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/wifi-module.h"
 
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <map>
+#include <random>
+#include <cmath>
+
 using namespace ns3;
 
+int myRand(){
+  //TODO DIOGOOOO Faz isso
+  return rand();
+}
 
-void funcMobility(bool bmobility, NodeContainer ap, NodeContainer nodes) {
+void funcMobility(bool bmobility, NodeContainer &ap, NodeContainer &nodes) {
     MobilityHelper mobility;
     if(bmobility){
       //List of points
@@ -73,69 +84,85 @@ void funcMobility(bool bmobility, NodeContainer ap, NodeContainer nodes) {
     }
 }
 
+void funcIntallWirelessDevice(NodeContainer &ap, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
+  // 5. Install wireless devices
+  WifiHelper wifi;
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
+  wifi.SetRemoteStationManager ("ns3::ArfWifiManager");
+
+  YansWifiChannelHelper wifiChannel;
+  wifiChannel = YansWifiChannelHelper::Default ();
+
+  YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
+  wifiPhy.SetChannel (wifiChannel.Create ());
+
+  Ssid ssid = Ssid ("wifi-default");
+
+  WifiMacHelper wifiMac;
+  wifiMac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid));
+  devices = wifi.Install (wifiPhy, wifiMac, nodes);
+  // setup ap.
+  wifiMac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
+  apdevice = wifi.Install (wifiPhy, wifiMac, ap);
+}
+
+void funcIntallProtocolIP(NodeContainer &ap, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
+  // 6. Install TCP/IP stack & assign IP addresses
+  InternetStackHelper internet;
+  internet.Install (nodes);
+  internet.Install (ap);
+
+  Ipv4AddressHelper ipv4;
+  ipv4.SetBase ("198.162.10.0", "255.255.255.0");
+  apdeviceIP = ipv4.Assign (apdevice);
+  devicesIP = ipv4.Assign (devices);
+}
+
 
 /// Run single 10 seconds experiment with enabled or disabled RTS/CTS mechanism
 void experiment (bool enableCtsRts)
 {
+  NodeContainer ap, nodes;
+  NetDeviceContainer apdevice, devices;
+  Ipv4InterfaceContainer apdeviceIP, devicesIP;
+
+
+
   // 0. Enable or disable CTS/RTS
   UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
 
   // 1. Create 3 nodes
   //TODO argc argv
-  NodeContainer nodes, ap;
+  uint32_t count_nodes = myRand() % 38 + 1;
   ap.Create (1);
-  nodes.Create (10);
+  nodes.Create (count_nodes);
 
   funcMobility(true, ap, nodes);
 
-  YansWifiChannelHelper wifiChannel;
-  // 5. Install wireless devices
-  WifiHelper wifi;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
-  wifi.SetRemoteStationManager ("ns3::ArfWifiManager");
+  funcIntallWirelessDevice(ap, nodes, apdevice, devices);
 
-  YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
-  wifiChannel = YansWifiChannelHelper::Default ();
-  wifiPhy.SetChannel (wifiChannel.Create ());
-  WifiMacHelper wifiMac;
-
-  Ssid ssid = Ssid ("wifi-default");
-  wifiMac.SetType ("ns3::StaWifiMac","Ssid", SsidValue (ssid));
-  NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, nodes);
-  // setup ap.
-  wifiMac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
-  NetDeviceContainer apdevice = wifi.Install (wifiPhy, wifiMac, ap);
-
-  // 6. Install TCP/IP stack & assign IP addresses
-  InternetStackHelper internet;
-  internet.Install (nodes);
-  internet.Install (ap);
-  Ipv4AddressHelper ipv4;
-  ipv4.SetBase ("198.162.10.0", "255.255.255.0");
-  Ipv4InterfaceContainer apDevsInt = ipv4.Assign (apdevice);
-  Ipv4InterfaceContainer staDevsInt = ipv4.Assign (devices);
-
-
+  funcIntallProtocolIP(ap, nodes, apdevice, devices, apdeviceIP, devicesIP);
 
 
   // 7. Install applications: two CBR streams each saturating the channel
   ApplicationContainer cbrApps;
   uint16_t cbrPort = 12345;
   // OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address ("10.0.0.2"), cbrPort));
-  OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (staDevsInt.GetAddress(8), cbrPort));
+  uint32_t id_server = myRand() % count_nodes;
+  OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), cbrPort));
   onOffHelper.SetAttribute ("PacketSize", UintegerValue (1400));
   onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
   onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
 
   onOffHelper.SetAttribute ("DataRate", StringValue ("300bps"));
   onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
-  cbrApps.Add (onOffHelper.Install (nodes.Get (3)));
+  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % count_nodes)));
 
 
   onOffHelper.SetAttribute ("DataRate", StringValue ("3001bps"));
   onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
-  cbrApps.Add (onOffHelper.Install (nodes.Get (4)));
+  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % count_nodes)));
 
 
 
