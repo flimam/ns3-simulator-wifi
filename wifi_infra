@@ -1,34 +1,5 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2010 IITP RAS
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Authors: Pavel Boyko <boyko@iitp.ru>
- */
 
-/*
- * Classical hidden terminal problem and its RTS/CTS solution.
- *
- * Topology: [node 0] <-- -50 dB --> [node 1] <-- -50 dB --> [node 2]
- *
- * This example illustrates the use of
- *  - Wifi in ad-hoc mode
- *  - Matrix propagation loss model
- *  - Use of OnOffApplication to generate CBR stream
- *  - IP flow monitor
- */
 #include "ns3/core-module.h"
 #include "ns3/propagation-module.h"
 #include "ns3/network-module.h"
@@ -38,12 +9,7 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/wifi-module.h"
 
-#include <iostream>
-#include <iomanip>
-#include <string>
-#include <map>
-#include <random>
-#include <cmath>
+uint32_t countNodes = 10; //GLOBAL
 
 using namespace ns3;
 
@@ -58,7 +24,7 @@ void funcMobility(bool bmobility, NodeContainer &ap, NodeContainer &nodes) {
       //List of points
       Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
       for (size_t i = 0; i < 40; i++) {
-        positionAlloc->Add (Vector (rand()%100, rand()%100, 0.0));
+        positionAlloc->Add (Vector (myRand()%100, myRand()%100, 0.0));
       }
       //Set list of points
       mobility.SetPositionAllocator (positionAlloc);
@@ -118,66 +84,9 @@ void funcIntallProtocolIP(NodeContainer &ap, NodeContainer &nodes, NetDeviceCont
   devicesIP = ipv4.Assign (devices);
 }
 
-
-/// Run single 10 seconds experiment with enabled or disabled RTS/CTS mechanism
-void experiment (bool enableCtsRts)
-{
-  NodeContainer ap, nodes;
-  NetDeviceContainer apdevice, devices;
-  Ipv4InterfaceContainer apdeviceIP, devicesIP;
-
-
-
-  // 0. Enable or disable CTS/RTS
-  UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
-  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
-
-  // 1. Create 3 nodes
-  //TODO argc argv
-  uint32_t count_nodes = myRand() % 38 + 1;
-  ap.Create (1);
-  nodes.Create (count_nodes);
-
-  funcMobility(true, ap, nodes);
-
-  funcIntallWirelessDevice(ap, nodes, apdevice, devices);
-
-  funcIntallProtocolIP(ap, nodes, apdevice, devices, apdeviceIP, devicesIP);
-
-
-  // 7. Install applications: two CBR streams each saturating the channel
-  ApplicationContainer cbrApps;
-  uint16_t cbrPort = 12345;
-  // OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address ("10.0.0.2"), cbrPort));
-  uint32_t id_server = myRand() % count_nodes;
-  OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), cbrPort));
-  onOffHelper.SetAttribute ("PacketSize", UintegerValue (1400));
-  onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-  onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-
-  onOffHelper.SetAttribute ("DataRate", StringValue ("300bps"));
-  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
-  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % count_nodes)));
-
-
-  onOffHelper.SetAttribute ("DataRate", StringValue ("3001bps"));
-  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
-  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % count_nodes)));
-
-
-
-
-
-  // 8. Install FlowMonitor on all nodes
-  FlowMonitorHelper flowmon;
-  Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
-
-  // 9. Run simulation for 10 seconds
-  Simulator::Stop (Seconds (10));
-  Simulator::Run ();
-
+void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
   // 10. Print per flow statistics
-  monitor->CheckForLostPackets ();
+  monitor->CheckForLostPackets();
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
   for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
@@ -201,6 +110,64 @@ void experiment (bool enableCtsRts)
         }
     }
 
+}
+
+/// Run single 10 seconds experiment with enabled or disabled RTS/CTS mechanism
+void experiment (bool enableCtsRts)
+{
+  //------------------------------------------------------------------------------
+  //TODO DESCOBRIR O QUE É ISSO
+    // 0. Enable or disable CTS/RTS
+    // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
+    UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
+    Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
+  //------------------------------------------------------------------------------
+
+
+  NodeContainer ap, nodes;
+  NetDeviceContainer apdevice, devices;
+  Ipv4InterfaceContainer apdeviceIP, devicesIP;
+
+  //Create nodes
+  ap.Create (1);
+  nodes.Create (countNodes);
+
+  funcMobility(true, ap, nodes);  // if value TRUE, exist mobility, else, not exist mobility.
+
+  funcIntallWirelessDevice(ap, nodes, apdevice, devices);
+
+  funcIntallProtocolIP(ap, nodes, apdevice, devices, apdeviceIP, devicesIP);
+
+
+  // 7. Install applications: two CBR streams each saturating the channel
+  ApplicationContainer cbrApps;
+  uint16_t cbrPort = 12345;
+  // OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address ("10.0.0.2"), cbrPort));
+  uint32_t id_server = myRand() % countNodes;
+  OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), cbrPort));
+  onOffHelper.SetAttribute ("PacketSize", UintegerValue (1400));
+  onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+  onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+
+  onOffHelper.SetAttribute ("DataRate", StringValue ("300bps"));
+  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
+  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
+
+  onOffHelper.SetAttribute ("DataRate", StringValue ("3001bps"));
+  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
+
+
+
+
+  // Install FlowMonitor on all nodes
+  FlowMonitorHelper flowmon;
+  Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
+  // 9. Run simulation for 10 seconds
+  Simulator::Stop (Seconds (10));
+  Simulator::Run ();
+  //execute magic of the flowmon
+  buildStatistics(flowmon, monitor);
   // 11. Cleanup
   Simulator::Destroy ();
 }
@@ -208,13 +175,11 @@ void experiment (bool enableCtsRts)
 int main (int argc, char **argv)
 {
   CommandLine cmd;
+
+  cmd.AddValue("nodes", "Number of packets to echo", countNodes);
   cmd.Parse (argc, argv);
 
-  std::cout << "Hidden station experiment with RTS/CTS disabled:\n" << std::flush;
   experiment (false);
-  std::cout << "------------------------------------------------\n";
-  std::cout << "Hidden station experiment with RTS/CTS enabled:\n";
-  experiment (true);
 
   return 0;
 }
