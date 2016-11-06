@@ -56,89 +56,6 @@
 
  static bool g_verbose = true;
 
- void
-   DevTxTrace (std::string context, Ptr<const Packet> p)
- {
-   if (g_verbose)
-     {
-
-       std::cout << " TX p: " << *p << std::endl;
-     }
- }
- void
- DevRxTrace (std::string context, Ptr<const Packet> p)
- {
-   if (g_verbose)
-     {
-       std::cout << " RX p: " << *p << std::endl;
-     }
- }
- void
- PhyRxOkTrace (std::string context, Ptr<const Packet> packet, double snr, WifiMode mode, enum WifiPreamble preamble)
- {
-   if (g_verbose)
-     {
-       std::cout << "PHYRXOK mode=" << mode << " snr=" << snr << " " << *packet << std::endl;
-     }
- }
- void
- PhyRxErrorTrace (std::string context, Ptr<const Packet> packet, double snr)
- {
-   if (g_verbose)
-     {
-       std::cout << "PHYRXERROR snr=" << snr << " " << *packet << std::endl;
-     }
- }
- void
- PhyTxTrace (std::string context, Ptr<const Packet> packet, WifiMode mode, WifiPreamble preamble, uint8_t txPower)
- {
-   if (g_verbose)
-     {
-       std::cout << "PHYTX mode=" << mode << " " << *packet << std::endl;
-     }
- }
- void
- PhyStateTrace (std::string context, Time start, Time duration, enum WifiPhy::State state)
- {
-   if (g_verbose)
-     {
-       std::cout << " state=" << state << " start=" << start << " duration=" << duration << std::endl;
-     }
- }
-
- static void
- SetPosition (Ptr<Node> node, Vector position)
- {
-   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
-   mobility->SetPosition (position);
- }
-
- static Vector
- GetPosition (Ptr<Node> node)
- {
-   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
-   return mobility->GetPosition ();
- }
-
- static void
- AdvancePosition (Ptr<Node> node)
- {
-   Vector pos = GetPosition (node);
-   pos.x += 5.0;
-   if (pos.x >= 210.0)
-     {
-       return;
-     }
-   SetPosition (node, pos);
-
-   if (g_verbose)
-     {
-       //std::cout << "x="<<pos.x << std::endl;
-     }
-   Simulator::Schedule (Seconds (1.0), &AdvancePosition, node);
- }
-
-
 
  int main (int argc, char *argv[])
  {
@@ -150,9 +67,9 @@
    Packet::EnablePrinting ();
 
    // enable rts cts all the time.
-   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
+  //  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
    // disable fragmentation
-   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2200"));
+  //  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2200"));
 
 
 
@@ -193,8 +110,6 @@
    wifiMac.SetType ("ns3::ApWifiMac","Ssid", SsidValue (ssid));
    apDevs = wifi.Install (wifiPhy, wifiMac, ap);
 
-
-
    mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                   "MinX", DoubleValue (0.0),
                                   "MinY", DoubleValue (0.0),
@@ -207,106 +122,39 @@
    mobility.Install (stas);
 
 
-   InternetStackHelper stack;
-   stack.Install (ap);
-   stack.Install (stas);
+   // 6. Install TCP/IP stack & assign IP addresses
+   InternetStackHelper internet;
+   internet.Install (ap);
+   internet.Install (stas);
+   Ipv4AddressHelper ipv4;
+   ipv4.SetBase ("10.0.0.0", "255.0.0.0");
+   Ipv4InterfaceContainer apDevsInt = ipv4.Assign (apDevs);
+   Ipv4InterfaceContainer staDevsInt = ipv4.Assign (staDevs);
 
+   // 7. Install applications: two CBR streams each saturating the channel
+   ApplicationContainer cbrApps;
+   uint16_t cbrPort = 12345;
+   OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (staDevsInt.GetAddress (6), cbrPort));
+   onOffHelper.SetAttribute ("PacketSize", UintegerValue (1400));
+   onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+   onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
 
-    // Ipv4AddressHelper address;
-    // Ipv4InterfaceContainer wifiInterfaces;
-    // address.SetBase ("10.1.2.0", "255.255.255.0");
-    // wifiInterfaces = address.Assign(apDevs);
-    // wifiInterfaces = address.Assign(staDevs);
+   // flow 1:  node 0 -> node 1
+   onOffHelper.SetAttribute ("DataRate", StringValue ("3000000bps"));
+   onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
+   cbrApps.Add (onOffHelper.Install (stas.Get (0)));
 
-     InetSocketAddress socket = InetSocketAddress (Ipv4Address::GetAny(), 80);
-
-
-
-    uint32_t packets = 1500;
-
-    Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1460));
-    Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (900000));
-    Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (900000));
-
-    Address sinkLocalAddress (InetSocketAddress(Ipv4Address::GetAny(), 9));
-    PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory",sinkLocalAddress);
-
-    ApplicationContainer sinkApp = sinkHelper.Install(stas.Get(2)); //TODO value
-
-    sinkApp.Start (Seconds (0.001));
-    sinkApp.Stop (Seconds (10.0));
-
-    // Create the OnOff applications to send TCP to the server
-    OnOffHelper sourceHelper ("ns3::TcpSocketFactory", Address());
-    sourceHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"));
-    sourceHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=5.0]"));
-
-    AddressValue remoteAddress (InetSocketAddress(wifiInterfaces.GetAddress (5), 9)); //TODO value
-    sourceHelper.SetAttribute ("Remote", remoteAddress);
-    sourceHelper.SetAttribute ("DataRate", DataRateValue(DataRate("11Mbps")));
-    sourceHelper.SetAttribute ("PacketSize", UintegerValue (packets));
+   // flow 2:  node 2 -> node 1
+   /** \internal
+    * The slightly different start times and data rates are a workaround
+    * for \bugid{388} and \bugid{912}
+    */
+   onOffHelper.SetAttribute ("DataRate", StringValue ("3001100bps"));
+   onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+   cbrApps.Add (onOffHelper.Install (stas.Get (2)));
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-//    Ipv4AddressHelper address;
-//    address.SetBase ("192.168.1.0", "255.255.255.0");
-//    address.Assign (apDevs);
-//    address.Assign (staDevs);
-//
-//
-//    PacketSocketAddress socket;
-//    socket.SetSingleDevice (staDevs.Get (0)->GetIfIndex ());
-//    socket.SetPhysicalAddress (staDevs.Get (1)->GetAddress ());
-//    socket.SetProtocol (1);
-//
-//    OnOffHelper onoff ("ns3::PacketSocketFactory", Address (socket));
-//    onoff.SetConstantRate (DataRate ("500kb/s"));
-//
-//    ApplicationContainer apps = onoff.Install (stas.Get (0));
-//    apps.Start (Seconds (1.0));
-//    apps.Stop (Seconds (10.0));
-//
-//    Simulator::Stop (Seconds (10.0));
-//
-//    Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacTx", MakeCallback (&DevTxTrace));
-//    Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacRx", MakeCallback (&DevRxTrace));
-//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/RxOk", MakeCallback (&PhyRxOkTrace));
-//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/RxError", MakeCallback (&PhyRxErrorTrace));
-//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/Tx", MakeCallback (&PhyTxTrace));
-//    //Config::Connect ("/NodeList/*/DeviceList/*/Phy/State/State", MakeCallback (&PhyStateTrace));
-//
-//    //AthstatsHelper athstats;
-// //    athstats.EnableAthstats ("athstats-sta", stas);
-// //    athstats.EnableAthstats ("athstats-ap", ap);
-
-  //  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
    Simulator::Run ();
 
