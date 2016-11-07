@@ -12,10 +12,34 @@
 uint32_t countNodes = 10; //GLOBAL
 
 using namespace ns3;
+using namespace std;
 
 int myRand(){
   //TODO DIOGOOOO Faz isso
   return rand();
+}
+
+double firstRxTime = -1.0, lastRxTime;
+uint32_t bytesTotal = 0;
+double dOffTime = 0.00;
+
+void SinkRxTrace(Ptr<const Packet> pkt, const Address &addr)
+{
+  if (firstRxTime < 0)
+    firstRxTime = Simulator::Now().GetSeconds();
+
+  lastRxTime = Simulator::Now().GetSeconds();
+  bytesTotal += pkt->GetSize();
+}
+
+void
+DevRxTrace (std::string context, Ptr<const Packet> p)
+{
+  if (firstRxTime < 0)
+    firstRxTime = Simulator::Now().GetSeconds();
+
+  lastRxTime = Simulator::Now().GetSeconds();
+  bytesTotal += p->GetSize();
 }
 
 void funcMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
@@ -87,35 +111,44 @@ void funcIntallProtocolIP(NodeContainer &apnode, NodeContainer &nodes, NetDevice
 void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
   // 10. Print per flow statistics
   monitor->CheckForLostPackets();
-  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
-    {
-      // first 2 FlowIds are for ECHO apps, we don't want to display them
-      //
-      // Duration for throughput measurement is 9.0 seconds, since
-      //   StartTime of the OnOffApplication is at about "second 1"
-      // and
-      //   Simulator::Stops at "second 10".
-      if (i->first > 2)
-        {
-          Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-          std::cout << "Flow " << i->first - 2 << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
-          std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
-          std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
-          std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / 9.0 / 1000 / 1000  << " Mbps\n";
-          std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
-          std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
-          std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / 9.0 / 1000 / 1000  << " Mbps\n";
-        }
-    }
 
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i)
+  {
+	  std::cout << "OffTime = " << dOffTime << " "  <<
+			  	   "flowid = "  << i->first << " "	<<
+			       "RX bytes = " << i->second.rxBytes  << " "
+				   "Received Throughput = " << (i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds() << "bps"
+            << " " << (i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds()/1024 << "kbps"
+				   << std::endl;
+  }
+  
+  std::cout << firstRxTime << " " << lastRxTime << " " << bytesTotal << std::endl;
+  
+  std::cout << "Num clients = " << countNodes << " "
+       << "Avg throughput = "
+       << bytesTotal*8/(lastRxTime-firstRxTime)/1024/countNodes
+       << " kbits/sec" << std::endl;
 }
 
 void experiment (bool enableCtsRts)
 {
   //------------------------------------------------------------------------------
-  //TODO DESCOBRIR O QUE É ISSO
+   /* Clear to Send/Request To Send é um mecanismo usado para combater o problema
+    * do terminal escondido. Isso acontece quando mais de um no tenta transmitir
+    * ao mesmo tempo, ocorrendo uma colisao no canal(no nosso caso é o proprio
+    * ar mas com os nós transmitindo na mesma frequencia). O AP acabaria nao
+    * conseguindo ler os dados.
+    * Para resolver isso os caras fazem os nos 'pedirem' para enviar, mandam um
+    * pedido (RTS) e esperam uma resposta positiva(CTS) antes de enviarem os
+    * dados(tem uma imagem ilustrando isso aqui 
+    * http://www.dltec.com.br/blog/cisco/acesso-aos-meios-em-wlans-csmaca-ccna/)
+    * Pacotes muito pequenos vale a pena eu nao perder tempo com essa verificacao
+    * e 'pagar' o preco das retransmissoes, para pacotes grandes não.
+    * O que esta sendo feito abaixo é setar o tamanho base do pacote. Se o
+    * CTS/RTS for usado, pacotes maiores que 100 bytes precisarao ter a pesmissao
+    * antes, senão somente pacotes maiores que 2200 bytes terao essa verificacao.
+   */
     // 0. Enable or disable CTS/RTS
     // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
     UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
@@ -144,26 +177,32 @@ void experiment (bool enableCtsRts)
   // OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address ("10.0.0.2"), cbrPort));
   uint32_t id_server = myRand() % countNodes;
   OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), cbrPort));
-  onOffHelper.SetAttribute ("PacketSize", UintegerValue (1400));
-  onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-  onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+  onOffHelper.SetAttribute ("PacketSize", UintegerValue (1500));
+  onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=0.001]"));
+  onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0.001]"));
 
-  onOffHelper.SetAttribute ("DataRate", StringValue ("300bps"));
-  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
-  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
+//  onOffHelper.SetAttribute ("DataRate", StringValue ("512kbps"));
+//  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
+//  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
 
-  onOffHelper.SetAttribute ("DataRate", StringValue ("3001bps"));
+  onOffHelper.SetAttribute ("DataRate", StringValue ("1500kbps"));
   onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
   cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
 
+  cbrApps.Start(Seconds(1.0));
+  cbrApps.Stop(Seconds(50.0));
 
+// Config::ConnectWithoutContext(
+//        "/NodeList/*/ApplicationList/*/$ns3::OnOffApplication/Tx",
+//        MakeCallback(&SinkRxTrace));
 
+  Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacRx", MakeCallback (&DevRxTrace));
 
   // Install FlowMonitor on all nodes
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
   // 9. Run simulation for 10 seconds
-  Simulator::Stop (Seconds (10));
+  Simulator::Stop (Seconds (60));
   Simulator::Run ();
   //execute magic of the flowmon
   buildStatistics(flowmon, monitor);
