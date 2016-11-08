@@ -20,34 +20,22 @@ int myRand(){
 }
 
 double firstRxTime = -1.0, lastRxTime;
-uint32_t bytesTotal = 0;
+uint32_t bytesTotalmacrx = 0;
+uint32_t bytesTotalmactx = 0;
 double dOffTime = 0.00;
+double countMac = 0;
+double countOnoff = 0;
+double countphyTx = 0;
 
-void SinkRxTrace(Ptr<const Packet> pkt, const Address &addr)
-{
-  if (firstRxTime < 0)
-    firstRxTime = Simulator::Now().GetSeconds();
-
-  lastRxTime = Simulator::Now().GetSeconds();
-  bytesTotal += pkt->GetSize();
-}
-
-void
-DevRxTrace (std::string context, Ptr<const Packet> p)
-{
-  if (firstRxTime < 0)
-    firstRxTime = Simulator::Now().GetSeconds();
-
-  lastRxTime = Simulator::Now().GetSeconds();
-  bytesTotal += p->GetSize();
-}
+static bool g_verbose = true;
 
 void funcMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
+
     MobilityHelper mobility;
     if(bmobility){
       //List of points
       Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-      for (size_t i = 0; i < 40; i++) {
+      for (size_t i = 0; i < countNodes; i++) {
         positionAlloc->Add (Vector (myRand()%100, myRand()%100, 0.0));
       }
       //Set list of points
@@ -75,6 +63,7 @@ void funcMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
 }
 
 void funcIntallWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
+
   // 5. Install wireless devices
   WifiHelper wifi;
   wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
@@ -97,6 +86,7 @@ void funcIntallWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDe
 }
 
 void funcIntallProtocolIP(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
+
   // 6. Install TCP/IP stack & assign IP addresses
   InternetStackHelper internet;
   internet.Install (nodes);
@@ -109,30 +99,33 @@ void funcIntallProtocolIP(NodeContainer &apnode, NodeContainer &nodes, NetDevice
 }
 
 void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
+
   // 10. Print per flow statistics
   monitor->CheckForLostPackets();
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
 
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i)
-  {
-	  std::cout << "OffTime = " << dOffTime << " "  <<
-			  	   "flowid = "  << i->first << " "	<<
-			       "RX bytes = " << i->second.rxBytes  << " "
-				   "Received Throughput = " << (i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds() << "bps"
-            << " " << (i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds()/1024 << "kbps"
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i){
+	  std::cout << "OffTime =  " << dOffTime << endl;
+	       cout << "flowid =   " << i->first << endl;
+	       cout << "RX bytes = " << i->second.rxBytes  << endl;
+	       cout << "RX Packets=" << i->second.rxPackets  << endl;
+	       cout << "last pkg = " << i->second.timeLastRxPacket.GetSeconds() << endl;
+	       cout << "First pkg= " << i->second.timeFirstRxPacket.GetSeconds() << endl;
+	       cout << "Received Throughput = " << (i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds() << "bps"
+            << " " << ((i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds())/1024 << "kbps"
 				   << std::endl;
   }
   
-  std::cout << firstRxTime << " " << lastRxTime << " " << bytesTotal << std::endl;
+  std::cout << firstRxTime << " " << lastRxTime << " " << bytesTotalmacrx << std::endl;
   
   std::cout << "Num clients = " << countNodes << " "
        << "Avg throughput = "
-       << bytesTotal*8/(lastRxTime-firstRxTime)/1024/countNodes
+       << bytesTotalmacrx*8/(lastRxTime-firstRxTime)/1024/countNodes
        << " kbits/sec" << std::endl;
 }
 
-void experiment (bool enableCtsRts)
-{
+void experiment (bool enableCtsRts){
+
   //------------------------------------------------------------------------------
    /* Clear to Send/Request To Send é um mecanismo usado para combater o problema
     * do terminal escondido. Isso acontece quando mais de um no tenta transmitir
@@ -155,7 +148,6 @@ void experiment (bool enableCtsRts)
     Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
   //------------------------------------------------------------------------------
 
-
   NodeContainer apnode, nodes;
   NetDeviceContainer apdevice, devices;
   Ipv4InterfaceContainer apdeviceIP, devicesIP;
@@ -170,42 +162,34 @@ void experiment (bool enableCtsRts)
 
   funcIntallProtocolIP(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
 
-
   // 7. Install applications: two CBR streams each saturating the channel
   ApplicationContainer cbrApps;
-  uint16_t cbrPort = 12345;
-  // OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address ("10.0.0.2"), cbrPort));
   uint32_t id_server = myRand() % countNodes;
-  OnOffHelper onOffHelper ("ns3::TcpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), cbrPort));
-  onOffHelper.SetAttribute ("PacketSize", UintegerValue (1500));
-  onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=0.001]"));
-  onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0.001]"));
 
-//  onOffHelper.SetAttribute ("DataRate", StringValue ("512kbps"));
-//  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.000000)));
-//  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
+  for (uint32_t i = 0; i < countNodes; i++){
+    OnOffHelper onOffHelper ("ns3::UdpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), i+1000));
+    onOffHelper.SetAttribute ("PacketSize", UintegerValue (1500));
+    onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+    onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
 
-  onOffHelper.SetAttribute ("DataRate", StringValue ("1500kbps"));
-  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
-  cbrApps.Add (onOffHelper.Install (nodes.Get (myRand() % countNodes)));
+    onOffHelper.SetAttribute ("DataRate", StringValue ("512kbps"));
+    onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
+    cbrApps.Add (onOffHelper.Install (nodes.Get(i)));
+  }
 
   cbrApps.Start(Seconds(1.0));
-  cbrApps.Stop(Seconds(50.0));
-
-// Config::ConnectWithoutContext(
-//        "/NodeList/*/ApplicationList/*/$ns3::OnOffApplication/Tx",
-//        MakeCallback(&SinkRxTrace));
-
-  Config::Connect ("/NodeList/*/DeviceList/*/Mac/MacRx", MakeCallback (&DevRxTrace));
-
+  cbrApps.Stop(Seconds(20.0));
+  
   // Install FlowMonitor on all nodes
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
+  
   // 9. Run simulation for 10 seconds
-  Simulator::Stop (Seconds (60));
+  Simulator::Stop (Seconds (20));
   Simulator::Run ();
-  //execute magic of the flowmon
-  buildStatistics(flowmon, monitor);
+  // execute magic of the flowmon
+  monitor->SerializeToXmlFile("wifiinfra.xml", true, true);
+  // buildStatistics(flowmon, monitor);
   // 11. Cleanup
   Simulator::Destroy ();
 }
@@ -221,10 +205,6 @@ int main (int argc, char **argv)
 
   return 0;
 }
-
-
-
-
 
 // /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
 //
