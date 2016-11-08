@@ -9,60 +9,57 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/wifi-module.h"
 
-uint32_t countNodes = 10; //GLOBAL
-
 using namespace ns3;
 using namespace std;
+
+//running settings
+uint32_t nNodes = 5; //GLOBAL
+static bool printLog = true;
+bool runFull = false;
+bool enableCtsRts = false;
+double runningTime = 60.0;
+double offTime = 0.001;
+double onTime = 0.001;
 
 int myRand(){
   //TODO DIOGOOOO Faz isso
   return rand();
 }
 
-double firstRxTime = -1.0, lastRxTime;
-uint32_t bytesTotalmacrx = 0;
-uint32_t bytesTotalmactx = 0;
-double dOffTime = 0.00;
-double countMac = 0;
-double countOnoff = 0;
-double countphyTx = 0;
+void setMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
 
-static bool g_verbose = true;
-
-void funcMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
-
-    MobilityHelper mobility;
-    if(bmobility){
-      //List of points
-      Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-      for (size_t i = 0; i < countNodes; i++) {
-        positionAlloc->Add (Vector (myRand()%100, myRand()%100, 0.0));
-      }
-      //Set list of points
-      mobility.SetPositionAllocator (positionAlloc);
-      //Set apnode static
-      mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-      mobility.Install (apnode);
-      //Set nodes with mobility
-      Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
-      mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
-      mobility.Install (nodes);
-    }else{
-      //Set local to nodes and apnode
-      mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                     "MinX", DoubleValue (0.0),
-                                     "MinY", DoubleValue (0.0),
-                                     "DeltaX", DoubleValue (20.0),
-                                     "DeltaY", DoubleValue (20.0),
-                                     "GridWidth", UintegerValue (5),
-                                     "LayoutType", StringValue ("RowFirst"));
-      mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-      mobility.Install (apnode);
-      mobility.Install (nodes);
+  MobilityHelper mobility;
+  if(bmobility){
+    //List of points
+    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+    for (size_t i = 0; i < nNodes; i++) {
+      positionAlloc->Add (Vector (myRand()%100, myRand()%100, 0.0));
     }
+    //Set list of points
+    mobility.SetPositionAllocator (positionAlloc);
+    //Set apnode static
+    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    mobility.Install (apnode);
+    //Set nodes with mobility
+    Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
+    mobility.Install (nodes);
+  }else{
+    //Set local to nodes and apnode
+    mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                   "MinX", DoubleValue (0.0),
+                                   "MinY", DoubleValue (0.0),
+                                   "DeltaX", DoubleValue (20.0),
+                                   "DeltaY", DoubleValue (20.0),
+                                   "GridWidth", UintegerValue (5),
+                                   "LayoutType", StringValue ("RowFirst"));
+    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    mobility.Install (apnode);
+    mobility.Install (nodes);
+  }
 }
 
-void funcIntallWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
+void installWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
 
   // 5. Install wireless devices
   WifiHelper wifi;
@@ -85,7 +82,7 @@ void funcIntallWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDe
   apdevice = wifi.Install (wifiPhy, wifiMac, apnode);
 }
 
-void funcIntallProtocolIP(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
+void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
 
   // 6. Install TCP/IP stack & assign IP addresses
   InternetStackHelper internet;
@@ -100,53 +97,55 @@ void funcIntallProtocolIP(NodeContainer &apnode, NodeContainer &nodes, NetDevice
 
 void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
 
-  // 10. Print per flow statistics
+  double throughput = 0;
+  double delay = 0;
+  double meanThroughput = 0.0;
+  double meanDelayPackets = 0.0;
+  double meanLostPackets = 0.0;
+  int count = 0;
+  
   monitor->CheckForLostPackets();
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
 
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i){
-	  std::cout << "OffTime =  " << dOffTime << endl;
-	       cout << "flowid =   " << i->first << endl;
-	       cout << "RX bytes = " << i->second.rxBytes  << endl;
-	       cout << "RX Packets=" << i->second.rxPackets  << endl;
-	       cout << "last pkg = " << i->second.timeLastRxPacket.GetSeconds() << endl;
-	       cout << "First pkg= " << i->second.timeFirstRxPacket.GetSeconds() << endl;
-	       cout << "Received Throughput = " << (i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds() << "bps"
-            << " " << ((i->second.rxBytes * 8) / (i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds())/1024 << "kbps"
-				   << std::endl;
+  for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
+
+    throughput = (i->second.rxBytes) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
+
+    cout << "Flowid              = " << i->first << endl;
+    cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
+    cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
+    cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
+    cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
+    cout << "Tx Packets          = " << i->second.txPackets << endl;
+    cout << "RX Packets          = " << i->second.rxPackets << endl;
+    cout << "Lost Packets        = " << i->second.lostPackets << endl;
+    cout << "Tx Bytes            = " << i->second.txBytes << endl;
+    cout << "RX bytes            = " << i->second.rxBytes << endl;
+    cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
+    cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
+    cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1024 << " kbps" << endl << endl;
+
+    meanThroughput += ((throughput > 0) ? throughput : 0);
+    delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
+    meanDelayPackets += ((delay > 0) ? delay : 0);
+    meanLostPackets += i->second.lostPackets;
   }
   
-  std::cout << firstRxTime << " " << lastRxTime << " " << bytesTotalmacrx << std::endl;
-  
-  std::cout << "Num clients = " << countNodes << " "
-       << "Avg throughput = "
-       << bytesTotalmacrx*8/(lastRxTime-firstRxTime)/1024/countNodes
-       << " kbits/sec" << std::endl;
+  meanThroughput /= count;
+  meanDelayPackets /= count;
+  meanLostPackets /= count;
+
+  cout << "Throughput (mean)   : " << meanThroughput/1024 << " kbps"<< endl;
+  cout << "Delay Packets (mean): " << meanDelayPackets << endl;
+  cout << "Lost Packets (mean) : " << meanLostPackets << endl;
 }
 
-void experiment (bool enableCtsRts){
+void run (){
 
-  //------------------------------------------------------------------------------
-   /* Clear to Send/Request To Send é um mecanismo usado para combater o problema
-    * do terminal escondido. Isso acontece quando mais de um no tenta transmitir
-    * ao mesmo tempo, ocorrendo uma colisao no canal(no nosso caso é o proprio
-    * ar mas com os nós transmitindo na mesma frequencia). O AP acabaria nao
-    * conseguindo ler os dados.
-    * Para resolver isso os caras fazem os nos 'pedirem' para enviar, mandam um
-    * pedido (RTS) e esperam uma resposta positiva(CTS) antes de enviarem os
-    * dados(tem uma imagem ilustrando isso aqui 
-    * http://www.dltec.com.br/blog/cisco/acesso-aos-meios-em-wlans-csmaca-ccna/)
-    * Pacotes muito pequenos vale a pena eu nao perder tempo com essa verificacao
-    * e 'pagar' o preco das retransmissoes, para pacotes grandes não.
-    * O que esta sendo feito abaixo é setar o tamanho base do pacote. Se o
-    * CTS/RTS for usado, pacotes maiores que 100 bytes precisarao ter a pesmissao
-    * antes, senão somente pacotes maiores que 2200 bytes terao essa verificacao.
-   */
-    // 0. Enable or disable CTS/RTS
-    // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
-    UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
-    Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
-  //------------------------------------------------------------------------------
+  // 0. Enable or disable CTS/RTS
+  // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
+  UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
+  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
 
   NodeContainer apnode, nodes;
   NetDeviceContainer apdevice, devices;
@@ -154,251 +153,70 @@ void experiment (bool enableCtsRts){
 
   //Create nodes
   apnode.Create (1);
-  nodes.Create (countNodes);
+  nodes.Create (nNodes);
 
-  funcMobility(true, apnode, nodes);  // if value TRUE, exist mobility, else, not exist mobility.
+  // if value TRUE, exist mobility, else, not exist mobility.
+  setMobility(true, apnode, nodes);
 
-  funcIntallWirelessDevice(apnode, nodes, apdevice, devices);
+  installWirelessDevice(apnode, nodes, apdevice, devices);
 
-  funcIntallProtocolIP(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
+  installInternetProtocol(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
 
-  // 7. Install applications: two CBR streams each saturating the channel
   ApplicationContainer cbrApps;
-  uint32_t id_server = myRand() % countNodes;
+  uint32_t id_server = myRand() % nNodes;
 
-  for (uint32_t i = 0; i < countNodes; i++){
+  //onTime and OffTime settings
+  std::ostringstream ossOnTime;
+  ossOnTime << "ns3::ConstantRandomVariable[Constant=" << onTime << "]";
+  std::ostringstream ossOffTime;
+  ossOffTime << "ns3::ConstantRandomVariable[Constant=" << offTime << "]";
+
+  for (uint32_t i = 0; i < nNodes; i++){
     OnOffHelper onOffHelper ("ns3::UdpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), i+1000));
-    onOffHelper.SetAttribute ("PacketSize", UintegerValue (1500));
-    onOffHelper.SetAttribute ("OnTime",  StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-    onOffHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+    onOffHelper.SetAttribute ("PacketSize", UintegerValue (484));
+    onOffHelper.SetAttribute ("OnTime",StringValue(ossOnTime.str()));
+    onOffHelper.SetAttribute ("OffTime",StringValue(ossOffTime.str()));
 
     onOffHelper.SetAttribute ("DataRate", StringValue ("512kbps"));
     onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
     cbrApps.Add (onOffHelper.Install (nodes.Get(i)));
   }
 
+  // Start and stop time of application
   cbrApps.Start(Seconds(1.0));
-  cbrApps.Stop(Seconds(20.0));
-  
+  cbrApps.Stop(Seconds(runningTime+1));
+
   // Install FlowMonitor on all nodes
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
-  
-  // 9. Run simulation for 10 seconds
-  Simulator::Stop (Seconds (20));
+
+  // Simulation running time
+  Simulator::Stop (Seconds (runningTime+2));
   Simulator::Run ();
+  
   // execute magic of the flowmon
   monitor->SerializeToXmlFile("wifiinfra.xml", true, true);
-  // buildStatistics(flowmon, monitor);
-  // 11. Cleanup
+  if(printLog)
+    buildStatistics(flowmon, monitor);
+  
+  // Cleanup
   Simulator::Destroy ();
 }
 
-int main (int argc, char **argv)
-{
+int main (int argc, char **argv){
+
   CommandLine cmd;
 
-  cmd.AddValue("nodes", "Number of packets to echo", countNodes);
+  cmd.AddValue("nodes", "Number of sta nodes", nNodes);
+  cmd.AddValue("runningTime", "Application running time in seconds", runningTime);
+  cmd.AddValue("onTime", "OnOff app time running on", onTime);
+  cmd.AddValue("offTime", "OnOff app time running off", offTime);
+  cmd.AddValue("printLog", "Print Statistics? (true/false)", printLog);
+  cmd.AddValue("runFull", "Run full simutation? (true/false)", runFull);
+  
   cmd.Parse (argc, argv);
 
-  experiment (false);
+  run ();
 
   return 0;
 }
-
-// /* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-//
-// //
-// // This script configures two nodes on an 802.11b physical layer, with
-// // 802.11b NICs in infrastructure mode, and by default, the station sends
-// // one packet of 1000 (application) bytes to the access point.  The
-// // physical layer is configured
-// // to receive at a fixed RSS (regardless of the distance and transmit
-// // power); therefore, changing position of the nodes has no effect.
-// //
-// // There are a number of command-line options available to control
-// // the default behavior.  The list of available command-line options
-// // can be listed with the following command:
-// // ./waf --run "wifi-simple-infra --help"
-// //
-// // For instance, for this configuration, the physical layer will
-// // stop successfully receiving packets when rss drops below -97 dBm.
-// // To see this effect, try running:
-// //
-// // ./waf --run "wifi-simple-infra --rss=-97 --numPackets=20"
-// // ./waf --run "wifi-simple-infra --rss=-98 --numPackets=20"
-// // ./waf --run "wifi-simple-infra --rss=-99 --numPackets=20"
-// //
-// // Note that all ns-3 attributes (not just the ones exposed in the below
-// // script) can be changed at command line; see the documentation.
-// //
-// // This script can also be helpful to put the Wifi layer into verbose
-// // logging mode; this command will turn on all wifi logging:
-// //
-// // ./waf --run "wifi-simple-infra --verbose=1"
-// //
-// // When you are done, you will notice two pcap trace files in your directory.
-// // If you have tcpdump installed, you can try this:
-// //
-// // tcpdump -r wifi-simple-infra-0-0.pcap -nn -tt
-// //
-//
-// #include "ns3/core-module.h"
-// #include "ns3/network-module.h"
-// #include "ns3/mobility-module.h"
-// #include "ns3/config-store-module.h"
-// #include "ns3/wifi-module.h"
-// #include "ns3/internet-module.h"
-//
-// #include <iostream>
-// #include <fstream>
-// #include <vector>
-// #include <string>
-//
-// using namespace ns3;
-//
-// NS_LOG_COMPONENT_DEFINE ("WifiSimpleInfra");
-//
-// void ReceivePacket (Ptr<Socket> socket)
-// {
-//   while (socket->Recv ())
-//     {
-//       NS_LOG_UNCOND ("Received one packet!");
-//     }
-// }
-//
-// static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
-//                              uint32_t pktCount, Time pktInterval )
-// {
-//   if (pktCount > 0)
-//     {
-//       socket->Send (Create<Packet> (pktSize));
-//       Simulator::Schedule (pktInterval, &GenerateTraffic,
-//                            socket, pktSize,pktCount-1, pktInterval);
-//     }
-//   else
-//     {
-//       socket->Close ();
-//     }
-// }
-//
-//
-// int main (int argc, char *argv[])
-// {
-//   std::string phyMode ("DsssRate1Mbps");
-//   double rss = -80;  // -dBm
-//   uint32_t packetSize = 1000; // bytes
-//   uint32_t numPackets = 1;
-//   double interval = 1.0; // seconds
-//   bool verbose = false;
-//
-//   CommandLine cmd;
-//
-//   cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
-//   cmd.AddValue ("rss", "received signal strength", rss);
-//   cmd.AddValue ("packetSize", "size of application packet sent", packetSize);
-//   cmd.AddValue ("numPackets", "number of packets generated", numPackets);
-//   cmd.AddValue ("interval", "interval (seconds) between packets", interval);
-//   cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
-//
-//   cmd.Parse (argc, argv);
-//   // Convert to time object
-//   Time interPacketInterval = Seconds (interval);
-//
-//   // disable fragmentation for frames below 2200 bytes
-//   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2200"));
-//   // turn off RTS/CTS for frames below 2200 bytes
-//   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("2200"));
-//   // Fix non-unicast data rate to be the same as that of unicast
-//   Config::SetDefault ("ns3::WifiRemoteStationManager::NonUnicastMode",
-//                       StringValue (phyMode));
-//
-//   NodeContainer c;
-//   c.Create (2);
-//
-//   // The below set of helpers will help us to put together the wifi NICs we want
-//   WifiHelper wifi;
-//   if (verbose)
-//     {
-//       wifi.EnableLogComponents ();  // Turn on all Wifi logging
-//     }
-//   wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
-//
-//   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
-//   // This is one parameter that matters when using FixedRssLossModel
-//   // set it to zero; otherwise, gain will be added
-//   wifiPhy.Set ("RxGain", DoubleValue (0) );
-//   // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
-//   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
-//
-//   YansWifiChannelHelper wifiChannel;
-//   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-//   // The below FixedRssLossModel will cause the rss to be fixed regardless
-//   // of the distance between the two stations, and the transmit power
-//   wifiChannel.AddPropagationLoss ("ns3::FixedRssLossModel","Rss",DoubleValue (rss));
-//   wifiPhy.SetChannel (wifiChannel.Create ());
-//
-//   // Add a mac and disable rate control
-//   WifiMacHelper wifiMac;
-//   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-//                                 "DataMode",StringValue (phyMode),
-//                                 "ControlMode",StringValue (phyMode));
-//
-//   // Setup the rest of the mac
-//   Ssid ssid = Ssid ("wifi-default");
-//   // setup sta.
-//   wifiMac.SetType ("ns3::StaWifiMac",
-//                    "Ssid", SsidValue (ssid));
-//   NetDeviceContainer staDevice = wifi.Install (wifiPhy, wifiMac, c.Get (0));
-//   NetDeviceContainer devices = staDevice;
-//   // setup ap.
-//   wifiMac.SetType ("ns3::ApWifiMac",
-//                    "Ssid", SsidValue (ssid));
-//   NetDeviceContainer apDevice = wifi.Install (wifiPhy, wifiMac, c.Get (1));
-//   devices.Add (apDevice);
-//
-//   // Note that with FixedRssLossModel, the positions below are not
-//   // used for received signal strength.
-//   MobilityHelper mobility;
-//   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-//   positionAlloc->Add (Vector (0.0, 0.0, 0.0));
-//   positionAlloc->Add (Vector (50.0, 0.0, 0.0));
-//   mobility.SetPositionAllocator (positionAlloc);
-//   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-//   mobility.Install (c);
-//
-//   InternetStackHelper internet;
-//   internet.Install (c);
-//
-//   Ipv4AddressHelper ipv4;
-//   NS_LOG_INFO ("Assign IP Addresses.");
-//   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
-//   Ipv4InterfaceContainer i = ipv4.Assign (devices);
-//
-//   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-//   Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (0), tid);
-//   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
-//   recvSink->Bind (local);
-//   recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
-//
-//   Ptr<Socket> source = Socket::CreateSocket (c.Get (1), tid);
-//   InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
-//   source->SetAllowBroadcast (true);
-//   source->Connect (remote);
-//
-//   // Tracing
-//   wifiPhy.EnablePcap ("wifi-simple-infra", devices);
-//
-//   // Output what we are doing
-//   NS_LOG_UNCOND ("Testing " << numPackets  << " packets sent with receiver rss " << rss );
-//
-//   Simulator::ScheduleWithContext (source->GetNode ()->GetId (),
-//                                   Seconds (1.0), &GenerateTraffic,
-//                                   source, packetSize, numPackets, interPacketInterval);
-//
-//   Simulator::Stop (Seconds (30.0));
-//   Simulator::Run ();
-//   Simulator::Destroy ();
-//
-//   return 0;
-// }
