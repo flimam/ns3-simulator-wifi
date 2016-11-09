@@ -32,9 +32,17 @@ double calcDistance (int x1, int y1, int x2, int y2){
   return sqrt( pow (x2 - x1, 2) + pow (y2 - y1, 2));
 }
 
-int myRand(){
-  //TODO DIOGOOOO Faz isso
-  return rand();
+int myRand(int min, int max){
+
+  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  x->SetAttribute ("Min", DoubleValue (min));
+  x->SetAttribute ("Max", DoubleValue (max));
+
+  int value = x->GetValue ();
+
+  cout << value << endl;
+
+  return value;
 }
 
 void setMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
@@ -44,7 +52,7 @@ void setMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
     //List of points
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
     for (size_t i = 0; i < nNodes; i++) {
-      positionAlloc->Add (Vector (myRand()%100, myRand()%100, 0.0));
+      positionAlloc->Add (Vector (myRand(0, 100), myRand(0, 100), 0.0));
     }
     //Set list of points
     mobility.SetPositionAllocator (positionAlloc);
@@ -108,7 +116,7 @@ void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NetDev
 
 void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devicesIP){
   ApplicationContainer cbrApps;
-  uint32_t id_server = myRand() % nNodes;
+  uint32_t id_server = myRand(0, nNodes);
 
   //onTime and OffTime settings
   std::ostringstream ossOnTime;
@@ -161,7 +169,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
 
   for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
 
-    throughput = (i->second.rxBytes) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
+    throughput = (i->second.rxBytes * 8) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
 
     cout << "Flowid              = " << i->first << endl;
     cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
@@ -208,7 +216,7 @@ void run (){
   nodes.Create (nNodes);
 
   // if value TRUE, exist mobility, else, not exist mobility.
-  setMobility(false, apnode, nodes);
+  setMobility(true, apnode, nodes);
 
   installWirelessDevice(apnode, nodes, apdevice, devices);
 
@@ -216,7 +224,6 @@ void run (){
 
   /* Populate routing table */
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
 
   // installUDPCommunication(nodes, devicesIP);
 
