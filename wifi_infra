@@ -19,6 +19,7 @@ uint32_t nNodes = 5; //GLOBAL
 static bool printLog = true;
 bool runFull = false;
 bool enableCtsRts = false;
+bool protocol = true;
 double runningTime = 60.0;
 double offTime = 0.001;
 double onTime = 0.001;
@@ -142,17 +143,34 @@ void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devic
 
 void installTCPCommunication(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
   //TODO
-  /* Install TCP Receiver on the access point */
-  PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), 9));
-  ApplicationContainer sinkApp = sinkHelper.Install (nodes);
+
+  // uint32_t id_server = myRand(0, nNodes);
+
+  ApplicationContainer serverApp;
+  ApplicationContainer sinkApp;
+
+  std::ostringstream ossOnTime;
+  ossOnTime << "ns3::ConstantRandomVariable[Constant=" << onTime << "]";
+  std::ostringstream ossOffTime;
+  ossOffTime << "ns3::ConstantRandomVariable[Constant=" << offTime << "]";
 
   /* Install TCP/UDP Transmitter on the station */
-  OnOffHelper server ("ns3::TcpSocketFactory", (InetSocketAddress (devicesIP.GetAddress(0), 9)));
-  server.SetAttribute ("PacketSize", UintegerValue (484));
-  server.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-  server.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-  server.SetAttribute ("DataRate", StringValue ("512kbps"));
-  ApplicationContainer serverApp = server.Install (nodes.Get(4));
+  for (uint32_t i = 0; i < nNodes; i++){
+  /* Install TCP Receiver on the access point */
+    PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny(), i+10000));
+    sinkApp.Add (sinkHelper.Install (nodes));
+    OnOffHelper server ("ns3::TcpSocketFactory", (InetSocketAddress (devicesIP.GetAddress(i), i+10000)));
+    server.SetAttribute ("PacketSize", UintegerValue (1484));
+    server.SetAttribute ("OnTime", StringValue(ossOnTime.str()));
+    server.SetAttribute ("OffTime", StringValue(ossOffTime.str()));
+    server.SetAttribute ("DataRate", StringValue ("512kbps"));
+    serverApp.Add(server.Install (nodes.Get(myRand(0,nNodes))));
+  }
+
+
+    sinkApp.Start (Seconds (0.0));
+    serverApp.Start (Seconds (1.0));
+    serverApp.Stop(Seconds(runningTime+1));
 }
 
 void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
@@ -258,6 +276,8 @@ int main (int argc, char **argv){
   cmd.AddValue("runningTime", "Application running time in seconds", runningTime);
   cmd.AddValue("onTime", "OnOff app time running on", onTime);
   cmd.AddValue("offTime", "OnOff app time running off", offTime);
+  cmd.AddValue("protocol", "Protocol (TCP=false,UDP=true)", protocol);
+
   cmd.AddValue("printLog", "Print Statistics? (true/false)", printLog);
   cmd.AddValue("runFull", "Run full simutation? (true/false)", runFull);
 
