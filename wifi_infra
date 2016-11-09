@@ -8,6 +8,8 @@
 #include "ns3/internet-module.h"
 #include "ns3/flow-monitor-module.h"
 #include "ns3/wifi-module.h"
+#include <iostream>
+#include <math.h>
 
 using namespace ns3;
 using namespace std;
@@ -20,6 +22,15 @@ bool enableCtsRts = false;
 double runningTime = 60.0;
 double offTime = 0.001;
 double onTime = 0.001;
+
+void CourseChange (std::string context, Ptr<const MobilityModel> model){
+  Vector position = model->GetPosition ();
+  NS_LOG_UNCOND (context <<" x = " << position.x << ", y = " << position.y << " , z = " << position.z);
+}
+
+double calcDistance (int x1, int y1, int x2, int y2){
+  return sqrt( pow (x2 - x1, 2) + pow (y2 - y1, 2));
+}
 
 int myRand(){
   //TODO DIOGOOOO Faz isso
@@ -95,73 +106,7 @@ void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NetDev
   devicesIP = ipv4.Assign (devices);
 }
 
-void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
-
-  double throughput = 0;
-  double delay = 0;
-  double meanThroughput = 0.0;
-  double meanDelayPackets = 0.0;
-  double meanLostPackets = 0.0;
-  int count = 0;
-  
-  monitor->CheckForLostPackets();
-  FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
-
-  for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
-
-    throughput = (i->second.rxBytes) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
-
-    cout << "Flowid              = " << i->first << endl;
-    cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
-    cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
-    cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
-    cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
-    cout << "Tx Packets          = " << i->second.txPackets << endl;
-    cout << "RX Packets          = " << i->second.rxPackets << endl;
-    cout << "Lost Packets        = " << i->second.lostPackets << endl;
-    cout << "Tx Bytes            = " << i->second.txBytes << endl;
-    cout << "RX bytes            = " << i->second.rxBytes << endl;
-    cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
-    cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
-    cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1024 << " kbps" << endl << endl;
-
-    meanThroughput += ((throughput > 0) ? throughput : 0);
-    delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
-    meanDelayPackets += ((delay > 0) ? delay : 0);
-    meanLostPackets += i->second.lostPackets;
-  }
-  
-  meanThroughput /= count;
-  meanDelayPackets /= count;
-  meanLostPackets /= count;
-
-  cout << "Throughput (mean)   : " << meanThroughput/1024 << " kbps"<< endl;
-  cout << "Delay Packets (mean): " << meanDelayPackets << endl;
-  cout << "Lost Packets (mean) : " << meanLostPackets << endl;
-}
-
-void run (){
-
-  // 0. Enable or disable CTS/RTS
-  // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
-  UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
-  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
-
-  NodeContainer apnode, nodes;
-  NetDeviceContainer apdevice, devices;
-  Ipv4InterfaceContainer apdeviceIP, devicesIP;
-
-  //Create nodes
-  apnode.Create (1);
-  nodes.Create (nNodes);
-
-  // if value TRUE, exist mobility, else, not exist mobility.
-  setMobility(true, apnode, nodes);
-
-  installWirelessDevice(apnode, nodes, apdevice, devices);
-
-  installInternetProtocol(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
-
+void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devicesIP){
   ApplicationContainer cbrApps;
   uint32_t id_server = myRand() % nNodes;
 
@@ -185,20 +130,115 @@ void run (){
   // Start and stop time of application
   cbrApps.Start(Seconds(1.0));
   cbrApps.Stop(Seconds(runningTime+1));
+}
+
+void installTCPCommunication(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
+  //TODO
+  /* Install TCP Receiver on the access point */
+  PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), 9));
+  ApplicationContainer sinkApp = sinkHelper.Install (nodes);
+
+  /* Install TCP/UDP Transmitter on the station */
+  OnOffHelper server ("ns3::TcpSocketFactory", (InetSocketAddress (devicesIP.GetAddress(0), 9)));
+  server.SetAttribute ("PacketSize", UintegerValue (484));
+  server.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+  server.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+  server.SetAttribute ("DataRate", StringValue ("512kbps"));
+  ApplicationContainer serverApp = server.Install (nodes.Get(4));
+}
+
+void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
+
+  double throughput = 0;
+  double delay = 0;
+  double meanThroughput = 0.0;
+  double meanDelayPackets = 0.0;
+  double meanLostPackets = 0.0;
+  int count = 0;
+
+  monitor->CheckForLostPackets();
+  FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+
+  for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
+
+    throughput = (i->second.rxBytes) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
+
+    cout << "Flowid              = " << i->first << endl;
+    cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
+    cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
+    cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
+    cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
+    cout << "Tx Packets          = " << i->second.txPackets << endl;
+    cout << "RX Packets          = " << i->second.rxPackets << endl;
+    cout << "Lost Packets        = " << i->second.lostPackets << endl;
+    cout << "Tx Bytes            = " << i->second.txBytes << endl;
+    cout << "RX bytes            = " << i->second.rxBytes << endl;
+    cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
+    cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
+    cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1000 << " kbps" << endl << endl;
+
+    meanThroughput += ((throughput > 0) ? throughput : 0);
+    delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
+    meanDelayPackets += ((delay > 0) ? delay : 0);
+    meanLostPackets += i->second.lostPackets;
+  }
+
+  meanThroughput /= count;
+  meanDelayPackets /= count;
+  meanLostPackets /= count;
+
+  cout << "Throughput (mean)   : " << meanThroughput/1000 << " kbps"<< endl;
+  cout << "Delay Packets (mean): " << meanDelayPackets << endl;
+  cout << "Lost Packets (mean) : " << meanLostPackets << endl;
+}
+
+void run (){
+
+  // 0. Enable or disable CTS/RTS
+  // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
+  UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
+  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
+
+  NodeContainer apnode, nodes;
+  NetDeviceContainer apdevice, devices;
+  Ipv4InterfaceContainer apdeviceIP, devicesIP;
+
+  //Create nodes
+  apnode.Create (1);
+  nodes.Create (nNodes);
+
+  // if value TRUE, exist mobility, else, not exist mobility.
+  setMobility(false, apnode, nodes);
+
+  installWirelessDevice(apnode, nodes, apdevice, devices);
+
+  installInternetProtocol(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
+
+  /* Populate routing table */
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+
+
+  // installUDPCommunication(nodes, devicesIP);
+
+  installTCPCommunication(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
+
 
   // Install FlowMonitor on all nodes
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
+  // /NodeList/9/$ns3::MobilityModel/
+  // Config::Connect ("/NodeList/*/$ns3::MobilityModel/CourseChange", MakeCallback (&CourseChange));
+
   // Simulation running time
   Simulator::Stop (Seconds (runningTime+2));
   Simulator::Run ();
-  
+
   // execute magic of the flowmon
   monitor->SerializeToXmlFile("wifiinfra.xml", true, true);
   if(printLog)
     buildStatistics(flowmon, monitor);
-  
+
   // Cleanup
   Simulator::Destroy ();
 }
@@ -213,7 +253,7 @@ int main (int argc, char **argv){
   cmd.AddValue("offTime", "OnOff app time running off", offTime);
   cmd.AddValue("printLog", "Print Statistics? (true/false)", printLog);
   cmd.AddValue("runFull", "Run full simutation? (true/false)", runFull);
-  
+
   cmd.Parse (argc, argv);
 
   run ();
