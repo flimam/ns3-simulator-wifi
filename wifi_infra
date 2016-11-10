@@ -17,9 +17,10 @@ using namespace std;
 //running settings
 uint32_t nNodes = 5; //GLOBAL
 static bool printLog = true;
-bool runFull = false;
 bool enableCtsRts = false;
-bool protocol = true;
+bool traffic = true;
+bool mobility = false;
+uint32_t packetsize;
 double runningTime = 60.0;
 double offTime = 0.001;
 double onTime = 0.001;
@@ -41,42 +42,31 @@ int myRand(int min, int max){
 
   int value = x->GetValue ();
 
-  cout << value << endl;
-
   return value;
 }
 
-void setMobility(bool bmobility, NodeContainer &apnode, NodeContainer &nodes) {
+void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
 
-  MobilityHelper mobility;
-  if(bmobility){
-    //List of points
-    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-    for (size_t i = 0; i < nNodes; i++) {
-      positionAlloc->Add (Vector (myRand(0, 100), myRand(0, 100), 0.0));
-    }
-    //Set list of points
-    mobility.SetPositionAllocator (positionAlloc);
-    //Set apnode static
-    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility.Install (apnode);
+  MobilityHelper mobilityh;
+  //List of points
+  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+
+  for (size_t i = 0; i < nNodes; i++) {
+    positionAlloc->Add (Vector (myRand(0, 100), myRand(0, 100), 0.0));
+  }
+  //Set list of points
+  mobilityh.SetPositionAllocator (positionAlloc);
+
+  //Set apnode static
+  mobilityh.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobilityh.Install (apnode);
+
+  if(mobility){
     //Set nodes with mobility
     Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
-    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
-    mobility.Install (nodes);
-  }else{
-    //Set local to nodes and apnode
-    mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                   "MinX", DoubleValue (0.0),
-                                   "MinY", DoubleValue (0.0),
-                                   "DeltaX", DoubleValue (20.0),
-                                   "DeltaY", DoubleValue (20.0),
-                                   "GridWidth", UintegerValue (5),
-                                   "LayoutType", StringValue ("RowFirst"));
-    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility.Install (apnode);
-    mobility.Install (nodes);
+    mobilityh.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
   }
+  mobilityh.Install (nodes);
 }
 
 void installWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
@@ -127,7 +117,7 @@ void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devic
 
   for (uint32_t i = 0; i < nNodes; i++){
     OnOffHelper onOffHelper ("ns3::UdpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), i+1000));
-    onOffHelper.SetAttribute ("PacketSize", UintegerValue (484));
+    onOffHelper.SetAttribute ("PacketSize", UintegerValue (packetsize));
     onOffHelper.SetAttribute ("OnTime",StringValue(ossOnTime.str()));
     onOffHelper.SetAttribute ("OffTime",StringValue(ossOffTime.str()));
 
@@ -185,23 +175,30 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
   monitor->CheckForLostPackets();
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
 
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
+
   for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
 
     throughput = (i->second.rxBytes * 8) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
+    Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
-    cout << "Flowid              = " << i->first << endl;
-    cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
-    cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
-    cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
-    cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
-    cout << "Tx Packets          = " << i->second.txPackets << endl;
-    cout << "RX Packets          = " << i->second.rxPackets << endl;
-    cout << "Lost Packets        = " << i->second.lostPackets << endl;
-    cout << "Tx Bytes            = " << i->second.txBytes << endl;
-    cout << "RX bytes            = " << i->second.rxBytes << endl;
-    cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
-    cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
-    cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1000 << " kbps" << endl << endl;
+    if(printLog){
+      cout << "Flowid              = " << i->first << endl;
+      cout << "Source Address      = " << t.sourceAddress << endl;
+      cout << "Destination Address = " << t.destinationAddress << endl;
+      cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
+      cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
+      cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
+      cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
+      cout << "Tx Packets          = " << i->second.txPackets << endl;
+      cout << "RX Packets          = " << i->second.rxPackets << endl;
+      cout << "Lost Packets        = " << i->second.lostPackets << endl;
+      cout << "Tx Bytes            = " << i->second.txBytes << endl;
+      cout << "RX bytes            = " << i->second.rxBytes << endl;
+      cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
+      cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
+      cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1000 << " kbps" << endl << endl;
+    }
 
     meanThroughput += ((throughput > 0) ? throughput : 0);
     delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
@@ -216,6 +213,30 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
   cout << "Throughput (mean)   : " << meanThroughput/1000 << " kbps"<< endl;
   cout << "Delay Packets (mean): " << meanDelayPackets << endl;
   cout << "Lost Packets (mean) : " << meanLostPackets << endl;
+
+  FILE *f;
+  // if udp/cbr
+  if(traffic){
+    if(mobility){
+      f = fopen("RandomWalk_cbr.csv", "a");
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+    }
+    else{
+      f = fopen("ConstantPosition_cbr.csv", "a");
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+    }
+  }
+  else{
+    if(mobility){
+      f = fopen("RandomWalk_pulse.csv", "a");
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+    }
+    else{
+      f = fopen("ConstantPosition_pulse_cbr.csv", "a");
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+    }
+  }
+  fclose(f);
 }
 
 void run (){
@@ -234,7 +255,7 @@ void run (){
   nodes.Create (nNodes);
 
   // if value TRUE, exist mobility, else, not exist mobility.
-  setMobility(true, apnode, nodes);
+  setMobility(apnode, nodes);
 
   installWirelessDevice(apnode, nodes, apdevice, devices);
 
@@ -243,10 +264,11 @@ void run (){
   /* Populate routing table */
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
-  // installUDPCommunication(nodes, devicesIP);
-
-  installTCPCommunication(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
-
+  // if udp/cbr
+  if(traffic)
+    installUDPCommunication(nodes, devicesIP);
+  else
+    installTCPCommunication(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
 
   // Install FlowMonitor on all nodes
   FlowMonitorHelper flowmon;
@@ -261,8 +283,7 @@ void run (){
 
   // execute magic of the flowmon
   monitor->SerializeToXmlFile("wifiinfra.xml", true, true);
-  if(printLog)
-    buildStatistics(flowmon, monitor);
+  buildStatistics(flowmon, monitor);
 
   // Cleanup
   Simulator::Destroy ();
@@ -274,14 +295,22 @@ int main (int argc, char **argv){
 
   cmd.AddValue("nodes", "Number of sta nodes", nNodes);
   cmd.AddValue("runningTime", "Application running time in seconds", runningTime);
-  cmd.AddValue("onTime", "OnOff app time running on", onTime);
-  cmd.AddValue("offTime", "OnOff app time running off", offTime);
-  cmd.AddValue("protocol", "Protocol (TCP=false,UDP=true)", protocol);
-
+  cmd.AddValue("traffic", "Traffic (CBR=true, pulse=false)", traffic);
+  cmd.AddValue("mobility", "Mobile nodes (true/false)", mobility);
   cmd.AddValue("printLog", "Print Statistics? (true/false)", printLog);
-  cmd.AddValue("runFull", "Run full simutation? (true/false)", runFull);
 
   cmd.Parse (argc, argv);
+
+  if(traffic){
+    packetsize = 484;
+    onTime = 0.001;
+    offTime = 0.001;
+  }
+  else{
+    packetsize = 1484;
+    onTime = 2.0;
+    offTime = 3.0;
+  }
 
   run ();
 
