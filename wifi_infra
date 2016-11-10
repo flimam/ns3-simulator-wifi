@@ -25,13 +25,39 @@ double runningTime = 60.0;
 double offTime = 0.001;
 double onTime = 0.001;
 
+size_t nearNode = -1;
+size_t farNode = -1;
+double dNearNode;
+double dFarNode;
+
+
 void CourseChange (std::string context, Ptr<const MobilityModel> model){
   Vector position = model->GetPosition ();
   NS_LOG_UNCOND (context <<" x = " << position.x << ", y = " << position.y << " , z = " << position.z);
 }
 
-double calcDistance (int x1, int y1, int x2, int y2){
-  return sqrt( pow (x2 - x1, 2) + pow (y2 - y1, 2));
+double calcDistance (uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2){
+  return sqrt( (double) pow (x2 - x1, 2) + (double) pow (y2 - y1, 2));
+}
+
+void findNode(uint32_t ApX, uint32_t ApY, uint32_t NodeX, uint32_t NodeY, size_t id){
+  double result = calcDistance(ApX, ApY, NodeX, NodeY);
+  std::cout<< "ID: " << id << " - " << result << "\n (" <<  NodeX <<","<< NodeY << ")" << std::endl;
+  if(id == 0){
+    nearNode = id;
+    farNode = id;
+    dNearNode = result;
+    dFarNode = result;
+  }else{
+    if(result > dFarNode){
+      farNode = id;
+      dFarNode = result;
+    }
+    if(result < dNearNode){
+      nearNode = id;
+      dNearNode = result;
+    }
+  }
 }
 
 int myRand(int min, int max){
@@ -50,23 +76,32 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
   MobilityHelper mobilityh;
   //List of points
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-
-  for (size_t i = 0; i < nNodes; i++) {
-    positionAlloc->Add (Vector (myRand(0, 100), myRand(0, 100), 0.0));
-  }
-  //Set list of points
-  mobilityh.SetPositionAllocator (positionAlloc);
-
   //Set apnode static
+  uint32_t ApX = myRand(0, 100);
+  uint32_t ApY = myRand(0, 100);
+  positionAlloc->Add (Vector (ApX, ApY, 0.0));
+  mobilityh.SetPositionAllocator (positionAlloc);
   mobilityh.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobilityh.Install (apnode);
-
+  //Set station node static
   if(mobility){
     //Set nodes with mobility
     Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
     mobilityh.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
   }
-  mobilityh.Install (nodes);
+  for (size_t i = 0; i < nNodes; i++) {
+    uint32_t NodeX = myRand(0, 100);
+    uint32_t NodeY = myRand(0, 100);
+    findNode(ApX, ApY, NodeX, NodeY, i);
+    positionAlloc = CreateObject<ListPositionAllocator> ();
+    positionAlloc->Add (Vector (NodeX, NodeY, 0.0));
+    mobilityh.SetPositionAllocator (positionAlloc);
+    mobilityh.Install (nodes.Get(i));
+  }
+  std::cout << "Mais Distante: " << farNode << "     com a distancia de " << dFarNode << "." << std::endl;
+  std::cout << "Mais Proximo : " << nearNode << "    com a distancia de " << dNearNode << "." << std::endl;
+  //Set list of points
+
 }
 
 void installWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
@@ -103,6 +138,10 @@ void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NetDev
   ipv4.SetBase ("198.162.10.0", "255.255.255.0");
   apdeviceIP = ipv4.Assign (apdevice);
   devicesIP = ipv4.Assign (devices);
+
+  for (size_t i = 0; i < nNodes; i++) {
+    std::cout << i << " - " << devicesIP.GetAddress(i) << '\n';
+  }
 }
 
 void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devicesIP){
