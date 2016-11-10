@@ -37,7 +37,7 @@ void CourseChange (std::string context, Ptr<const MobilityModel> model){
 }
 
 double calcDistance (uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2){
-  return sqrt( (double) pow (x2 - x1, 2) + (double) pow (y2 - y1, 2));
+  return sqrt( (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
 }
 
 void findNode(uint32_t ApX, uint32_t ApY, uint32_t NodeX, uint32_t NodeY, size_t id){
