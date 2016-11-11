@@ -3,6 +3,7 @@
 #include "ns3/core-module.h"
 #include "ns3/propagation-module.h"
 #include "ns3/network-module.h"
+#include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/internet-module.h"
@@ -66,6 +67,13 @@ int myRand(int min, int max){
   return value;
 }
 
+double myprobability(){
+
+  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+
+  return x->GetValue ();
+}
+
 void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
 
   MobilityHelper mobilityh;
@@ -99,7 +107,15 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
 
 }
 
-void installWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
+void installP2PDevices(NodeContainer &p2pnode, NetDeviceContainer &p2pdevice){
+
+  PointToPointHelper pointToPoint;
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
+  // pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ms"));
+  p2pdevice = pointToPoint.Install (p2pnode);
+}
+
+void installWirelesp2pdevice(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices){
 
   // 5. Install wireless devices
   WifiHelper wifi;
@@ -122,26 +138,25 @@ void installWirelessDevice(NodeContainer &apnode, NodeContainer &nodes, NetDevic
   apdevice = wifi.Install (wifiPhy, wifiMac, apnode);
 }
 
-void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
+void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NodeContainer &p2pnode, NetDeviceContainer &apdevice, NetDeviceContainer &devices, NetDeviceContainer &p2pdevice, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP, Ipv4InterfaceContainer &p2pdeviceIP){
 
   // 6. Install TCP/IP stack & assign IP addresses
   InternetStackHelper internet;
   internet.Install (nodes);
   internet.Install (apnode);
+  internet.Install (p2pnode.Get(0));
 
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("198.162.10.0", "255.255.255.0");
   apdeviceIP = ipv4.Assign (apdevice);
   devicesIP = ipv4.Assign (devices);
 
-//  for (size_t i = 0; i < nNodes; i++) {
-//    std::cout << i << " - " << devicesIP.GetAddress(i) << '\n';
-//  }
+  ipv4.SetBase ("10.1.1.0", "255.255.255.0");
+  p2pdeviceIP = ipv4.Assign (p2pdevice);
 }
 
-void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devicesIP){
+void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &p2pdeviceIP){
   ApplicationContainer cbrApps;
-  uint32_t id_server = myRand(0, nNodes);
 
   //onTime and OffTime settings
   std::ostringstream ossOnTime;
@@ -150,13 +165,12 @@ void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devic
   ossOffTime << "ns3::ConstantRandomVariable[Constant=" << offTime << "]";
 
   for (uint32_t i = 0; i < nNodes; i++){
-    OnOffHelper onOffHelper ("ns3::UdpSocketFactory", InetSocketAddress (devicesIP.GetAddress(id_server), i+1000));
+    OnOffHelper onOffHelper ("ns3::UdpSocketFactory", InetSocketAddress (p2pdeviceIP.GetAddress(0), i+1000));
     onOffHelper.SetAttribute ("PacketSize", UintegerValue (packetsize));
     onOffHelper.SetAttribute ("OnTime",StringValue(ossOnTime.str()));
     onOffHelper.SetAttribute ("OffTime",StringValue(ossOffTime.str()));
 
     onOffHelper.SetAttribute ("DataRate", StringValue ("512kbps"));
-    onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.001)));
     cbrApps.Add (onOffHelper.Install (nodes.Get(i)));
   }
 
@@ -165,11 +179,7 @@ void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devic
   cbrApps.Stop(Seconds(runningTime+1));
 }
 
-void installTCPCommunication(NodeContainer &apnode, NodeContainer &nodes, NetDeviceContainer &apdevice, NetDeviceContainer &devices, Ipv4InterfaceContainer &apdeviceIP, Ipv4InterfaceContainer &devicesIP){
-  //TODO
-
-  // uint32_t id_server = myRand(0, nNodes);
-
+void installTCPCommunication(NodeContainer &nodes, NodeContainer &p2pnode, Ipv4InterfaceContainer &p2pdeviceIP){
   ApplicationContainer serverApp;
   ApplicationContainer sinkApp;
 
@@ -181,19 +191,18 @@ void installTCPCommunication(NodeContainer &apnode, NodeContainer &nodes, NetDev
   /* Install TCP/UDP Transmitter on the station */
   for (uint32_t i = 0; i < nNodes; i++){
   /* Install TCP Receiver on the access point */
-    PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny(), i+10000));
-    sinkApp.Add (sinkHelper.Install (nodes));
-    OnOffHelper server ("ns3::TcpSocketFactory", (InetSocketAddress (devicesIP.GetAddress(i), i+10000)));
+    PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (p2pdeviceIP.GetAddress(0), i+10000));
+    sinkApp = sinkHelper.Install (nodes.Get(i));
+    sinkApp.Add (sinkHelper.Install (p2pnode.Get(0)));
+    sinkApp.Start (Seconds (0.0));
+    OnOffHelper server ("ns3::TcpSocketFactory", (InetSocketAddress (p2pdeviceIP.GetAddress(0), i+10000)));
     server.SetAttribute ("PacketSize", UintegerValue (1484));
     server.SetAttribute ("OnTime", StringValue(ossOnTime.str()));
     server.SetAttribute ("OffTime", StringValue(ossOffTime.str()));
     server.SetAttribute ("DataRate", StringValue ("512kbps"));
-    serverApp.Add(server.Install (nodes.Get(myRand(0,nNodes))));
+    serverApp = server.Install (nodes.Get(i));
+    serverApp.Start (Seconds ( myRand(0,((int)runningTime/4)) +myprobability()));
   }
-
-
-    sinkApp.Start (Seconds (0.0));
-    serverApp.Start (Seconds (1.0));
     serverApp.Stop(Seconds(runningTime+1));
 }
 
@@ -305,29 +314,32 @@ void run (){
   UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
 
-  NodeContainer apnode, nodes;
-  NetDeviceContainer apdevice, devices;
-  Ipv4InterfaceContainer apdeviceIP, devicesIP;
+  NodeContainer apnode, nodes, p2pnode;
+  NetDeviceContainer apdevice, devices, p2pdevice;
+  Ipv4InterfaceContainer apdeviceIP, devicesIP, p2pdeviceIP;
 
   //Create nodes
-  apnode.Create (1);
+  p2pnode.Create (2);
+  apnode = p2pnode.Get(1);
   nodes.Create (nNodes);
 
   // if value TRUE, exist mobility, else, not exist mobility.
   setMobility(apnode, nodes);
 
-  installWirelessDevice(apnode, nodes, apdevice, devices);
+  installP2PDevices(p2pnode, p2pdevice);
 
-  installInternetProtocol(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
+  installWirelesp2pdevice(apnode, nodes, apdevice, devices);
+
+  installInternetProtocol(apnode, nodes, p2pnode, apdevice, devices, p2pdevice, apdeviceIP, devicesIP, p2pdeviceIP);
 
   /* Populate routing table */
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
   // if udp/cbr
   if(traffic)
-    installUDPCommunication(nodes, devicesIP);
+    installUDPCommunication(nodes, p2pdeviceIP);
   else
-    installTCPCommunication(apnode, nodes, apdevice, devices, apdeviceIP, devicesIP);
+    installTCPCommunication(nodes, p2pnode, p2pdeviceIP);
 
   // Install FlowMonitor on all nodes
   FlowMonitorHelper flowmon;
