@@ -244,12 +244,14 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1024 << " kbps" << endl << endl;
     }
 
-    meanThroughput += ((throughput > 0) ? throughput : 0);
+    throughput = ((throughput > 0) ? throughput : 0);
+    meanThroughput += throughput;
     delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
-    meanDelayPackets += ((delay > 0) ? delay : 0);
+    delay = ((delay > 0) ? delay : 0);
+    meanDelayPackets += delay;
     meanLostPackets += i->second.lostPackets;
 
-    if(mobility){
+    if(!mobility){
       if(devicesIP.GetAddress(nearestNode) == t.sourceAddress){
         if(traffic){
           f = fopen("Nearest_node_cbr.csv", "a");
