@@ -25,16 +25,11 @@ double runningTime = 60.0;
 double offTime = 0.001;
 double onTime = 0.001;
 
-size_t nearNode = -1;
-size_t farNode = -1;
-double dNearNode;
-double dFarNode;
+size_t nearestNode = -1;
+size_t farthestNode = -1;
+double dnearestNode;
+double dfarthestNode;
 
-
-void CourseChange (std::string context, Ptr<const MobilityModel> model){
-  Vector position = model->GetPosition ();
-  NS_LOG_UNCOND (context <<" x = " << position.x << ", y = " << position.y << " , z = " << position.z);
-}
 
 double calcDistance (uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2){
   return sqrt( (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
@@ -42,20 +37,20 @@ double calcDistance (uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2){
 
 void findNode(uint32_t ApX, uint32_t ApY, uint32_t NodeX, uint32_t NodeY, size_t id){
   double result = calcDistance(ApX, ApY, NodeX, NodeY);
-  std::cout<< "ID: " << id << " - " << result << "\n (" <<  NodeX <<","<< NodeY << ")" << std::endl;
   if(id == 0){
-    nearNode = id;
-    farNode = id;
-    dNearNode = result;
-    dFarNode = result;
-  }else{
-    if(result > dFarNode){
-      farNode = id;
-      dFarNode = result;
+    nearestNode = id;
+    farthestNode = id;
+    dnearestNode = result;
+    dfarthestNode = result;
+  }
+  else{
+    if(result > dfarthestNode){
+      farthestNode = id;
+      dfarthestNode = result;
     }
-    if(result < dNearNode){
-      nearNode = id;
-      dNearNode = result;
+    if(result < dnearestNode){
+      nearestNode = id;
+      dnearestNode = result;
     }
   }
 }
@@ -98,8 +93,8 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
     mobilityh.SetPositionAllocator (positionAlloc);
     mobilityh.Install (nodes.Get(i));
   }
-  std::cout << "Mais Distante: " << farNode << "     com a distancia de " << dFarNode << "." << std::endl;
-  std::cout << "Mais Proximo : " << nearNode << "    com a distancia de " << dNearNode << "." << std::endl;
+  //cout << "Mais Distante: " << farthestNode << "     com a distancia de " << dfarthestNode << "." << std::endl;
+  //cout << "Mais Proximo : " << nearestNode << "    com a distancia de " << dnearestNode << "." << std::endl;
   //Set list of points
 
 }
@@ -139,9 +134,9 @@ void installInternetProtocol(NodeContainer &apnode, NodeContainer &nodes, NetDev
   apdeviceIP = ipv4.Assign (apdevice);
   devicesIP = ipv4.Assign (devices);
 
-  for (size_t i = 0; i < nNodes; i++) {
-    std::cout << i << " - " << devicesIP.GetAddress(i) << '\n';
-  }
+//  for (size_t i = 0; i < nNodes; i++) {
+//    std::cout << i << " - " << devicesIP.GetAddress(i) << '\n';
+//  }
 }
 
 void installUDPCommunication(NodeContainer &nodes, Ipv4InterfaceContainer &devicesIP){
@@ -202,7 +197,7 @@ void installTCPCommunication(NodeContainer &apnode, NodeContainer &nodes, NetDev
     serverApp.Stop(Seconds(runningTime+1));
 }
 
-void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
+void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4InterfaceContainer &devicesIP){
 
   double throughput = 0;
   double delay = 0;
@@ -210,6 +205,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
   double meanDelayPackets = 0.0;
   double meanLostPackets = 0.0;
   int count = 0;
+  FILE *f;
 
   monitor->CheckForLostPackets();
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
@@ -218,7 +214,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
 
   for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
 
-    throughput = (i->second.rxBytes * 8) / ((i->second.timeLastRxPacket - i->second.timeFirstRxPacket).GetSeconds());
+    throughput = (i->second.txBytes * 8) / ((i->second.timeLastTxPacket - i->second.timeFirstTxPacket).GetSeconds());
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
 
     if(printLog){
@@ -236,43 +232,67 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor){
       cout << "RX bytes            = " << i->second.rxBytes << endl;
       cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
       cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
-      cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1000 << " kbps" << endl << endl;
+      cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1024 << " kbps" << endl << endl;
     }
 
     meanThroughput += ((throughput > 0) ? throughput : 0);
     delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
     meanDelayPackets += ((delay > 0) ? delay : 0);
     meanLostPackets += i->second.lostPackets;
+
+    if(mobility){
+      if(devicesIP.GetAddress(nearestNode) == t.sourceAddress){
+        if(traffic){
+          f = fopen("Nearest_node_cbr.csv", "a");
+          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
+        }
+        else{
+          f = fopen("Nearest_node_pulse.csv", "a");
+          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
+        }
+        fclose(f);
+      }
+      else if (devicesIP.GetAddress(farthestNode) == t.sourceAddress){
+        if(traffic){
+          f = fopen("Farthest_node_cbr.csv", "a");
+          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
+        }
+        else{
+          f = fopen("Farthest_node_pulse.csv", "a");
+          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
+        }
+        fclose(f);
+      }
+    }
   }
 
-  meanThroughput /= count;
-  meanDelayPackets /= count;
-  meanLostPackets /= count;
+  meanThroughput /= nNodes;
+  meanDelayPackets /= nNodes;
+  meanLostPackets /= nNodes;
 
-  cout << "Throughput (mean)   : " << meanThroughput/1000 << " kbps"<< endl;
+  cout << "Throughput (mean)   : " << meanThroughput/1024 << " kbps"<< endl;
   cout << "Delay Packets (mean): " << meanDelayPackets << endl;
   cout << "Lost Packets (mean) : " << meanLostPackets << endl;
 
-  FILE *f;
   // if udp/cbr
   if(traffic){
     if(mobility){
       f = fopen("RandomWalk_cbr.csv", "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
     else{
       f = fopen("ConstantPosition_cbr.csv", "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
   }
   else{
     if(mobility){
       f = fopen("RandomWalk_pulse.csv", "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
     else{
       f = fopen("ConstantPosition_pulse_cbr.csv", "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1000, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
   }
   fclose(f);
@@ -313,16 +333,13 @@ void run (){
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
-  // /NodeList/9/$ns3::MobilityModel/
-  // Config::Connect ("/NodeList/*/$ns3::MobilityModel/CourseChange", MakeCallback (&CourseChange));
-
   // Simulation running time
   Simulator::Stop (Seconds (runningTime+2));
   Simulator::Run ();
 
   // execute magic of the flowmon
   monitor->SerializeToXmlFile("wifiinfra.xml", true, true);
-  buildStatistics(flowmon, monitor);
+  buildStatistics(flowmon, monitor, devicesIP);
 
   // Cleanup
   Simulator::Destroy ();

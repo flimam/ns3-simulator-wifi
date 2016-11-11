@@ -7,6 +7,14 @@ if(file.exists("RandomWalk_pulse.csv"))
   file.remove("RandomWalk_pulse.csv")
 if(file.exists("ConstantPosition_pulse_cbr.csv"))
   file.remove("ConstantPosition_pulse_cbr.csv")
+if(file.exists("Nearest_node_cbr.csv"))
+  file.remove("Nearest_node_cbr.csv")
+if(file.exists("Nearest_node_pulse.csv"))
+  file.remove("Nearest_node_pulse.csv")
+if(file.exists("Farthest_node_cbr.csv"))
+  file.remove("Farthest_node_cbr.csv")
+if(file.exists("Farthest_node_pulse.csv"))
+  file.remove("Farthest_node_pulse.csv")
 
 for (i in seq(from=5, to=40, by=5)){
   print(paste ('Nos=',  i))
@@ -24,6 +32,10 @@ for (i in seq(from=5, to=40, by=5)){
 cp_cbr <- read.csv("ConstantPosition_cbr.csv", header=F, sep=";")
 #rw_pulse <- read.csv("RandomWalk_pulse.csv", header=F, sep=";")
 #cp_pulse <- read.csv("ConstantPosition_pulse_cbr.csv", header=F, sep=";")
+#n_cbr <- read.csv("Nearest_node_cbr.csv", header=F, sep=";")
+#n_pulse <- read.csv("Nearest_node_pulse.csv", header=F, sep=";")
+#f_cbr <- read.csv("Farthest_node_cbr.csv", header=F, sep=";")
+#f_pulse <- read.csv("Farthest_node_pulse.csv", header=F, sep=";")
 
 plot(cp_cbr[,1], cp_cbr[,2])
 
