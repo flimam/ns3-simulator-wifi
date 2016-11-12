@@ -201,7 +201,7 @@ void installTCPCommunication(NodeContainer &nodes, NodeContainer &p2pnode, Ipv4I
     server.SetAttribute ("OffTime", StringValue(ossOffTime.str()));
     server.SetAttribute ("DataRate", StringValue ("512kbps"));
     serverApp = server.Install (nodes.Get(i));
-    serverApp.Start (Seconds ( myRand(0,((int)runningTime/4)) +myprobability()));
+    serverApp.Start (Seconds (1));
   }
     serverApp.Stop(Seconds(runningTime+1));
 }
@@ -221,7 +221,6 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
 
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
 
-  cout << p2pdeviceIP.GetAddress(0) << endl;
   for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
 
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
