@@ -221,7 +221,6 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
 
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
 
-  cout << p2pdeviceIP.GetAddress(0) << endl;
   for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
 
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
