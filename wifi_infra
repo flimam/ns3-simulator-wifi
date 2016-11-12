@@ -206,7 +206,7 @@ void installTCPCommunication(NodeContainer &nodes, NodeContainer &p2pnode, Ipv4I
     serverApp.Stop(Seconds(runningTime+1));
 }
 
-void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4InterfaceContainer &devicesIP){
+void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4InterfaceContainer &devicesIP, Ipv4InterfaceContainer &p2pdeviceIP){
 
   double throughput = 0;
   double delay = 0;
@@ -221,58 +221,61 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
 
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
 
+  cout << p2pdeviceIP.GetAddress(0) << endl;
   for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin (); i != stats.end (); ++i, count++){
 
-    throughput = (i->second.txBytes * 8) / ((i->second.timeLastTxPacket - i->second.timeFirstTxPacket).GetSeconds());
     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+    if (t.destinationAddress == p2pdeviceIP.GetAddress(0)){
+      throughput = (i->second.txBytes * 8) / ((i->second.timeLastTxPacket - i->second.timeFirstTxPacket).GetSeconds());
 
-    if(printLog){
-      cout << "Flowid              = " << i->first << endl;
-      cout << "Source Address      = " << t.sourceAddress << endl;
-      cout << "Destination Address = " << t.destinationAddress << endl;
-      cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
-      cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
-      cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
-      cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
-      cout << "Tx Packets          = " << i->second.txPackets << endl;
-      cout << "RX Packets          = " << i->second.rxPackets << endl;
-      cout << "Lost Packets        = " << i->second.lostPackets << endl;
-      cout << "Tx Bytes            = " << i->second.txBytes << endl;
-      cout << "RX bytes            = " << i->second.rxBytes << endl;
-      cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
-      cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
-      cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1024 << " kbps" << endl << endl;
-    }
-
-    throughput = ((throughput > 0) ? throughput : 0);
-    meanThroughput += throughput;
-    delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
-    delay = ((delay > 0) ? delay : 0);
-    meanDelayPackets += delay;
-    meanLostPackets += i->second.lostPackets;
-
-    if(!mobility){
-      if(devicesIP.GetAddress(nearestNode) == t.sourceAddress){
-        if(traffic){
-          f = fopen("Nearest_node_cbr.csv", "a");
-          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
-        }
-        else{
-          f = fopen("Nearest_node_pulse.csv", "a");
-          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
-        }
-        fclose(f);
+      if(printLog){
+        cout << "Flowid              = " << i->first << endl;
+        cout << "Source Address      = " << t.sourceAddress << endl;
+        cout << "Destination Address = " << t.destinationAddress << endl;
+        cout << "First Tx Packet     = " << i->second.timeFirstTxPacket.GetSeconds() << endl;
+        cout << "First Rx Packet     = " << i->second.timeFirstRxPacket.GetSeconds() << endl;
+        cout << "Last Tx Packet      = " << i->second.timeLastTxPacket.GetSeconds() << endl;
+        cout << "Last Rx Packet      = " << i->second.timeLastRxPacket.GetSeconds() << endl;
+        cout << "Tx Packets          = " << i->second.txPackets << endl;
+        cout << "RX Packets          = " << i->second.rxPackets << endl;
+        cout << "Lost Packets        = " << i->second.lostPackets << endl;
+        cout << "Tx Bytes            = " << i->second.txBytes << endl;
+        cout << "RX bytes            = " << i->second.rxBytes << endl;
+        cout << "Delay Sum           = " << i->second.delaySum.GetSeconds() << endl;
+        cout << "Delay/Packet (mean) = " << i->second.delaySum.GetSeconds()/i->second.rxPackets << endl;
+        cout << "Received Throughput = " << throughput << " bps" << " " << throughput/1024 << " kbps" << endl << endl;
       }
-      else if (devicesIP.GetAddress(farthestNode) == t.sourceAddress){
-        if(traffic){
-          f = fopen("Farthest_node_cbr.csv", "a");
-          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
+
+      throughput = ((throughput > 0) ? throughput : 0);
+      meanThroughput += throughput;
+      delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
+      delay = ((delay > 0) ? delay : 0);
+      meanDelayPackets += delay;
+      meanLostPackets += i->second.lostPackets;
+
+      if(!mobility){
+        if(devicesIP.GetAddress(nearestNode) == t.sourceAddress){
+          if(traffic){
+            f = fopen("Nearest_node_cbr.csv", "a");
+            fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
+          }
+          else{
+            f = fopen("Nearest_node_pulse.csv", "a");
+            fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
+          }
+          fclose(f);
         }
-        else{
-          f = fopen("Farthest_node_pulse.csv", "a");
-          fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
+        else if (devicesIP.GetAddress(farthestNode) == t.sourceAddress){
+          if(traffic){
+            f = fopen("Farthest_node_cbr.csv", "a");
+            fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
+          }
+          else{
+            f = fopen("Farthest_node_pulse.csv", "a");
+            fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
+          }
+          fclose(f);
         }
-        fclose(f);
       }
     }
   }
@@ -353,7 +356,7 @@ void run (){
 
   // execute magic of the flowmon
   monitor->SerializeToXmlFile("wifiinfra.xml", true, true);
-  buildStatistics(flowmon, monitor, devicesIP);
+  buildStatistics(flowmon, monitor, devicesIP, p2pdeviceIP);
 
   // Cleanup
   Simulator::Destroy ();
