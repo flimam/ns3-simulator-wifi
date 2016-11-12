@@ -201,7 +201,7 @@ void installTCPCommunication(NodeContainer &nodes, NodeContainer &p2pnode, Ipv4I
     server.SetAttribute ("OffTime", StringValue(ossOffTime.str()));
     server.SetAttribute ("DataRate", StringValue ("512kbps"));
     serverApp = server.Install (nodes.Get(i));
-    serverApp.Start (Seconds ( myRand(0,((int)runningTime/4)) +myprobability()));
+    serverApp.Start (Seconds (1));
   }
     serverApp.Stop(Seconds(runningTime+1));
 }
