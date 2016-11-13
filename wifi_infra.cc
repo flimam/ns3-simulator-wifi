@@ -10,6 +10,7 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/wifi-module.h"
 #include <iostream>
+#include <sstream>
 #include <math.h>
 
 using namespace ns3;
@@ -30,6 +31,7 @@ size_t nearestNode = -1;
 size_t farthestNode = -1;
 double dnearestNode;
 double dfarthestNode;
+char prefix[150] = "";
 
 
 double calcDistance (uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2){
@@ -80,8 +82,8 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
   //List of points
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   //Set apnode static
-  uint32_t ApX = myRand(0, 100);
-  uint32_t ApY = myRand(0, 100);
+  uint32_t ApX = myRand(0, 150);
+  uint32_t ApY = myRand(0, 150);
   positionAlloc->Add (Vector (ApX, ApY, 0.0));
   mobilityh.SetPositionAllocator (positionAlloc);
   mobilityh.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
@@ -89,8 +91,26 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
   //Set station node static
   if(mobility){
     //Set nodes with mobility
-    Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
-    mobilityh.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
+    // Rectangle area = Rectangle (-5000, 5000, -5000, 5000); //Area of mobility
+    // mobilityh.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (area));
+
+    // MobilityHelper mobility;
+    mobilityh.SetMobilityModel ("ns3::GaussMarkovMobilityModel",
+      "Bounds", BoxValue (Box (0, 200, 0, 200, 0, 1)),
+      "TimeStep", TimeValue (Seconds (0.5)),
+      "Alpha", DoubleValue (0.85),
+      "MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=2|Max=7]"),
+      "MeanDirection", StringValue ("ns3::UniformRandomVariable[Min=0|Max=6.2]"),
+      "MeanPitch", StringValue ("ns3::UniformRandomVariable[Min=0.05|Max=0.05]"),
+      "NormalVelocity", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
+      "NormalDirection", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"),
+      "NormalPitch", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.02|Bound=0.04]"));
+    mobilityh.SetPositionAllocator ("ns3::RandomBoxPositionAllocator",
+      "X", StringValue ("ns3::UniformRandomVariable[Min=0|Max=150]"),
+      "Y", StringValue ("ns3::UniformRandomVariable[Min=0|Max=150]"),
+      "Z", StringValue ("ns3::UniformRandomVariable[Min=0|Max=1]"));
+
+
   }
   for (size_t i = 0; i < nNodes; i++) {
     uint32_t NodeX = myRand(0, 100);
@@ -255,22 +275,30 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       if(!mobility){
         if(devicesIP.GetAddress(nearestNode) == t.sourceAddress){
           if(traffic){
-            f = fopen("Nearest_node_cbr.csv", "a");
+            std::stringstream ss;
+            ss <<prefix<<"_"<<"Nearest_node_cbr.csv";
+            f = fopen(ss.str().c_str(), "a");
             fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
           }
           else{
-            f = fopen("Nearest_node_pulse.csv", "a");
+            std::stringstream ss;
+            ss <<prefix<<"_"<<"Nearest_node_pulse.csv";
+            f = fopen(ss.str().c_str(), "a");
             fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dnearestNode, throughput/1024, delay, i->second.lostPackets);
           }
           fclose(f);
         }
         else if (devicesIP.GetAddress(farthestNode) == t.sourceAddress){
           if(traffic){
-            f = fopen("Farthest_node_cbr.csv", "a");
+            std::stringstream ss;
+            ss <<prefix<<"_"<<"Farthest_node_cbr.csv";
+            f = fopen(ss.str().c_str(), "a");
             fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
           }
           else{
-            f = fopen("Farthest_node_pulse.csv", "a");
+            std::stringstream ss;
+            ss <<prefix<<"_"<<"Farthest_node_pulse.csv";
+            f = fopen(ss.str().c_str(), "a");
             fprintf(f, "%d;%.2f;%.2f;%.2f;%d\n", nNodes, dfarthestNode, throughput/1024, delay, i->second.lostPackets);
           }
           fclose(f);
@@ -290,21 +318,29 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
   // if udp/cbr
   if(traffic){
     if(mobility){
-      f = fopen("RandomWalk_cbr.csv", "a");
+      std::stringstream ss;
+      ss <<prefix<<"_"<<"RandomWalk_cbr.csv";
+      f = fopen(ss.str().c_str(), "a");
       fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
     else{
-      f = fopen("ConstantPosition_cbr.csv", "a");
+      std::stringstream ss;
+      ss <<prefix<<"_"<<"ConstantPosition_cbr.csv";
+      f = fopen(ss.str().c_str(), "a");
       fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
   }
   else{
     if(mobility){
-      f = fopen("RandomWalk_pulse.csv", "a");
+      std::stringstream ss;
+      ss <<prefix<<"_"<<"RandomWalk_pulse.csv";
+      f = fopen(ss.str().c_str(), "a");
       fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
     else{
-      f = fopen("ConstantPosition_pulse_cbr.csv", "a");
+      std::stringstream ss;
+      ss <<prefix<<"_"<<"ConstantPosition_pulse_cbr.csv";
+      f = fopen(ss.str().c_str(), "a");
       fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
     }
   }
@@ -312,7 +348,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
 }
 
 void run (){
-
+  //TODO TODO TODO
   // 0. Enable or disable CTS/RTS
   // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
   UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
@@ -370,6 +406,7 @@ int main (int argc, char **argv){
   cmd.AddValue("traffic", "Traffic (CBR=true, pulse=false)", traffic);
   cmd.AddValue("mobility", "Mobile nodes (true/false)", mobility);
   cmd.AddValue("printLog", "Print Statistics? (true/false)", printLog);
+  cmd.AddValue("prefix", "Name prefix of the file ", prefix);
 
   cmd.Parse (argc, argv);
 
