@@ -82,8 +82,8 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
   //List of points
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   //Set apnode static
-  uint32_t ApX = myRand(0, 150);
-  uint32_t ApY = myRand(0, 150);
+  uint32_t ApX = 50;
+  uint32_t ApY = 50;
   positionAlloc->Add (Vector (ApX, ApY, 0.0));
   mobilityh.SetPositionAllocator (positionAlloc);
   mobilityh.SetMobilityModel ("ns3::ConstantPositionMobilityModel");

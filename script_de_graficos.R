@@ -16,8 +16,6 @@ calc_result <- function(cube){
   return (cube)
 }
 
-
-
 calc_error <- function(matrix){
   result <- array(dim=c(nrow(matrix)))
   for(i in 1:nrow(matrix)){
@@ -27,7 +25,10 @@ calc_error <- function(matrix){
     result[i] <- (coef_de_conf) * (sd/sqrt(n))
   }
   return(result)
+}
 
+print_error <- function(error, vector, color){
+  arrows(nodes, vector-error, nodes, vector+error, col=color, code=3,angle=90,length=0.05)
 }
 
 
@@ -77,56 +78,90 @@ cube_f_cbr <- calc_result(cube_f_cbr)
 cube_f_pulse <- calc_result(cube_f_pulse)
 
 
-#
-# pdf("Delay_static.pdf")
-# plot(cp_cbr[,1], cp_cbr[,3], xlab='Número de nós', ylim=c(min(range(cp_cbr[,3]), range(n_cbr[,4]), range(f_cbr[,4]), range(cp_pulse[,3]), range(n_pulse[,4]), range(f_pulse[,4])), max(range(cp_cbr[,3]), range(n_cbr[,4]), range(f_cbr[,4]), range(cp_pulse[,3]), range(n_pulse[,4]), range(f_pulse[,4]))), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay')
-# points(n_cbr[,1], n_cbr[,4], type='b', col='green', lwd=2, pch=18)
-# points(f_cbr[,1], f_cbr[,4], type='b', col='red', lwd=2, pch=17)
-# points(cp_pulse[,1], cp_pulse[,3], type='b', col='orange', lwd=2, pch=16)
-# points(n_pulse[,1], n_pulse[,4], type='b', col='purple', lwd=2, pch=15)
-# points(f_pulse[,1], f_pulse[,4], type='b', col='yellow', lwd=2, pch=14)
+
+pdf("Results/Delay_static.pdf")
+plot(nodes, cube_cp_cbr[,2,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,2,1]), range(cube_n_cbr[,3,1]), range(cube_f_cbr[,3,1]), range(cube_cp_pulse[,2,1]), range(cube_n_pulse[,3,1]), range(cube_f_pulse[,3,1])), max(range(cube_cp_cbr[,2,1]), range(cube_n_cbr[,3,1]), range(cube_f_cbr[,3,1]), range(cube_cp_pulse[,2,1]), range(cube_n_pulse[,3,1]), range(cube_f_pulse[,3,1]))), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay')
+
+points(nodes, cube_n_cbr[,3,1], type='b', col='green', lwd=2, pch=18)
+
+points(nodes, cube_f_cbr[,3,1], type='b', col='red', lwd=2, pch=17)
+
+points(nodes, cube_cp_pulse[,2,1], type='b', col='orange', lwd=2, pch=16)
+
+points(nodes, cube_n_pulse[,3,1], type='b', col='purple', lwd=2, pch=15)
+
+points(nodes, cube_f_pulse[,3,1], type='b', col='yellow', lwd=2, pch=14)
+
 # grid(col='black')
-# legend('topleft', legend=c('CBR/Média', 'CBR/Nearest', 'CBR/Farthest', 'Rajada/Média', 'Rajada/Nearest', 'Rajada/Farthest'), lwd=2, pch=c(19, 18, 17, 16, 15, 14), title='Protocolo/Parametro', bg='white', col=c('blue', 'green', 'red', 'orange', 'purple', 'yellow'))
-# dev.off()
-#
-# pdf("LostPackets_static.pdf")
-# plot(cp_cbr[,1], cp_cbr[,4], xlab='Número de nós', ylim=c(min(range(cp_cbr[,4]), range(n_cbr[,5]), range(f_cbr[,5]), range(cp_pulse[,4]), range(n_pulse[,5]), range(f_pulse[,5])), max(range(cp_cbr[,4]), range(n_cbr[,5]), range(f_cbr[,5]), range(cp_pulse[,4]), range(n_pulse[,5]), range(f_pulse[,5]))), ylab='Perca de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay')
-# points(n_cbr[,1], n_cbr[,5], type='b', col='green', lwd=2, pch=18)
-# points(f_cbr[,1], f_cbr[,5], type='b', col='red', lwd=2, pch=17)
-# points(cp_pulse[,1], cp_pulse[,4], type='b', col='orange', lwd=2, pch=16)
-# points(n_pulse[,1], n_pulse[,5], type='b', col='purple', lwd=2, pch=15)
-# points(f_pulse[,1], f_pulse[,5], type='b', col='yellow', lwd=2, pch=14)
+legend('topleft', legend=c('CBR/Média', 'CBR/Nearest', 'CBR/Farthest', 'Rajada/Média', 'Rajada/Nearest', 'Rajada/Farthest'), lwd=2, pch=c(19, 18, 17, 16, 15, 14), title='Protocolo/Parametro', bg='white', col=c('blue', 'green', 'red', 'orange', 'purple', 'yellow'))
+dev.off()
+
+
+
+pdf("Results/LostPackets_static.pdf")
+plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,3,1]), range(cube_n_cbr[,4,1]), range(cube_f_cbr[,4,1]), range(cube_cp_pulse[,3,1]), range(cube_n_pulse[,4,1]), range(cube_f_pulse[,4,1])), max(range(cube_cp_cbr[,3,1]), range(cube_n_cbr[,4,1]), range(cube_f_cbr[,4,1]), range(cube_cp_pulse[,3,1]), range(cube_n_pulse[,4,1]), range(cube_f_pulse[,4,1]))), ylab='Perca de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay')
+
+points(nodes, cube_n_cbr[,4,1], type='b', col='green', lwd=2, pch=18)
+
+points(nodes, cube_f_cbr[,4,1], type='b', col='red', lwd=2, pch=17)
+
+points(nodes, cube_cp_pulse[,3,1], type='b', col='orange', lwd=2, pch=16)
+
+points(nodes, cube_n_pulse[,4,1], type='b', col='purple', lwd=2, pch=15)
+
+points(nodes, cube_f_pulse[,4,1], type='b', col='yellow', lwd=2, pch=14)
+
 # grid(col='black')
-# legend('topleft', legend=c('CBR/Média', 'CBR/Nearest', 'CBR/Farthest', 'Rajada/Média', 'Rajada/Nearest', 'Rajada/Farthest'), lwd=2, pch=c(19, 18, 17, 16, 15, 14), title='Protocolo/Parametro', bg='white', col=c('blue', 'green', 'red', 'orange', 'purple', 'yellow'))
-# dev.off()
-#
-# #Graficos principais
-# pdf("Throughput_CBR_pulse.pdf")
-# plot(cp_cbr[,1], cp_cbr[,2], xlab='Número de nós', ylim=c(min(range(cp_cbr[,2]), range(cp_pulse[,2]), range(rw_cbr[,2]), range(rw_pulse[,2])), max(range(cp_cbr[,2]), range(cp_pulse[,2]), range(rw_cbr[,2]), range(rw_pulse[,2]))), ylab='Throughput médio em kbts', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput médio')
-# points(rw_cbr[,1], rw_cbr[,2], type='b', col='green', lwd=2, pch=18)
-# points(cp_pulse[,1], cp_pulse[,2], type='b', col='red', lwd=2, pch=17)
-# points(rw_pulse[,1], rw_pulse[,2], type='b', col='orange', lwd=2, pch=16)
+legend('topleft', legend=c('CBR/Média', 'CBR/Nearest', 'CBR/Farthest', 'Rajada/Média', 'Rajada/Nearest', 'Rajada/Farthest'), lwd=2, pch=c(19, 18, 17, 16, 15, 14), title='Protocolo/Parametro', bg='white', col=c('blue', 'green', 'red', 'orange', 'purple', 'yellow'))
+dev.off()
+
+
+
+#Graficos principais
+pdf("Results/Throughput_CBR_pulse.pdf")
+plot(nodes, cube_cp_cbr[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,1,1]), range(cube_cp_pulse[,1,1]), range(cube_rw_cbr[,1,1]), range(cube_rw_pulse[,1,1])), max(range(cube_cp_cbr[,1,1]), range(cube_cp_pulse[,1,1]), range(cube_rw_cbr[,1,1]), range(cube_rw_pulse[,1,1]))), ylab='Throughput médio em kbts', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput médio')
+
+points(nodes, cube_rw_cbr[,1,1], type='b', col='green', lwd=2, pch=18)
+
+points(nodes, cube_cp_pulse[,1,1], type='b', col='red', lwd=2, pch=17)
+
+points(nodes, cube_rw_pulse[,1,1], type='b', col='orange', lwd=2, pch=16)
+
 # grid(col='black')
-# legend('topleft', legend=c('CBR/staticos', 'CBR/móveis', 'Rajada/estáticos', 'Rajada/móveis'), lwd=2, pch=c(19, 18, 17, 16), title='Protocolo/mobilidade dos nós', bg='white', col=c('blue','green', 'red', 'orange'))
-# dev.off()
-#
-# pdf("Delay_CBR_pulse.pdf")
-# plot(cp_cbr[,1], cp_cbr[,3], xlab='Número de nós', ylim=c(min(range(cp_cbr[,3]), range(cp_pulse[,3]), range(rw_cbr[,3]), range(rw_pulse[,3])), max(range(cp_cbr[,3]), range(cp_pulse[,3]), range(rw_cbr[,3]), range(rw_pulse[,3]))), ylab='Delay médio em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay médio')
-# points(rw_cbr[,1], rw_cbr[,3], type='b', col='green', lwd=2, pch=18)
-# points(cp_pulse[,1], cp_pulse[,3], type='b', col='red', lwd=2, pch=17)
-# points(rw_pulse[,1], rw_pulse[,3], type='b', col='orange', lwd=2, pch=16)
+legend('topleft', legend=c('CBR/staticos', 'CBR/móveis', 'Rajada/estáticos', 'Rajada/móveis'), lwd=2, pch=c(19, 18, 17, 16), title='Protocolo/mobilidade dos nós', bg='white', col=c('blue','green', 'red', 'orange'))
+dev.off()
+
+
+
+pdf("Results/Delay_CBR_pulse.pdf")
+plot(nodes, cube_cp_cbr[,2,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,2,1]), range(cube_cp_pulse[,2,1]), range(cube_rw_cbr[,2,1]), range(cube_rw_pulse[,2,1])), max(range(cube_cp_cbr[,2,1]), range(cube_cp_pulse[,2,1]), range(cube_rw_cbr[,2,1]), range(cube_rw_pulse[,2,1]))), ylab='Delay médio em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay médio')
+
+points(nodes, cube_rw_cbr[,2,1], type='b', col='green', lwd=2, pch=18)
+
+points(nodes, cube_cp_pulse[,2,1], type='b', col='red', lwd=2, pch=17)
+
+points(nodes, cube_rw_pulse[,2,1], type='b', col='orange', lwd=2, pch=16)
+
 # grid(col='black')
-# legend('topleft', legend=c('CBR/staticos', 'CBR/móveis', 'Rajada/estáticos', 'Rajada/móveis'), lwd=2, pch=c(19, 18, 17, 16), title='Protocolo/mobilidade dos nós', bg='white', col=c('blue','green', 'red', 'orange'))
-# dev.off()
-#
+legend('topleft', legend=c('CBR/staticos', 'CBR/móveis', 'Rajada/estáticos', 'Rajada/móveis'), lwd=2, pch=c(19, 18, 17, 16), title='Protocolo/mobilidade dos nós', bg='white', col=c('blue','green', 'red', 'orange'))
+dev.off()
+
+
+
+
 # pdf("LostPackets_CBR_pulse.pdf")
-# plot(cp_cbr[,1], cp_cbr[,4], xlab='Número de nós', ylim=c(min(range(cp_cbr[,4]), range(cp_pulse[,4]), range(rw_cbr[,4]), range(rw_pulse[,4])), max(range(cp_cbr[,4]), range(cp_pulse[,4]), range(rw_cbr[,4]), range(rw_pulse[,4]))), ylab='Perca média de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Perca média de pacotes (valores absolutos)')
-# points(rw_cbr[,1], rw_cbr[,4], type='b', col='green', lwd=2, pch=18)
-# points(cp_pulse[,1], cp_pulse[,4], type='b', col='red', lwd=2, pch=17)
-# points(rw_pulse[,1], rw_pulse[,4], type='b', col='orange', lwd=2, pch=16)
+# plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,3,1]), range(cube_cp_pulse[,3,1]), range(cube_rw_cbr[,3,1]), range(cube_rw_pulse[,3,1])), max(range(cube_cp_cbr[,3,1]), range(cube_cp_pulse[,3,1]), range(cube_rw_cbr[,3,1]), range(cube_rw_pulse[,3,1]))), ylab='Perca média de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Perca média de pacotes (valores absolutos)')
+# points(nodes, cube_rw_cbr[,4], type='b', col='green', lwd=2, pch=18)
+# points(nodes, cube_cp_pulse[,4], type='b', col='red', lwd=2, pch=17)
+# points(nodes, cube_rw_pulse[,4], type='b', col='orange', lwd=2, pch=16)
 # grid(col='black')
 # legend('topleft', legend=c('CBR/staticos', 'CBR/móveis', 'Rajada/estáticos', 'Rajada/móveis'), lwd=2, pch=c(19, 18, 17, 16), title='Protocolo/mobilidade dos nós', bg='white', col=c('blue','green', 'red', 'orange'))
 # dev.off()
+
+
+
+
+
 #
 # #Graficos individuais para o primeiro cenario(sem mobilidade)
 # pdf("Throughput_static_CBR.pdf")
@@ -139,16 +174,16 @@ cube_f_pulse <- calc_result(cube_f_pulse)
 #
 
 
-pdf("Throughput_static_pulse.pdf")
+pdf("Results/Throughput_static_pulse.pdf")
 plot(nodes, cube_cp_pulse[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1])), max(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1]))), ylab='Throughput em kbits', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput pulse')
-m_error <- calc_error(cube_cp_pulse[,1,])
-arrows(nodes,cube_cp_pulse[,1,1] - m_error,nodes,cube_cp_pulse[,1,1] + m_error, col="blue", code=3,angle=90,length=0.05)
+print_error(calc_error(cube_cp_pulse[,1,]), cube_cp_pulse[,1,1], "blue")
 points(nodes, cube_n_pulse[,2,1], type='b', col='green', lwd=2, pch=18)
-m_error <- calc_error(cube_n_pulse[,1,])
-arrows(nodes,cube_n_pulse[,2,1] - m_error,nodes,cube_n_pulse[,2,1] + m_error, col='green', code=3,angle=90,length=0.05)
+print_error(calc_error(cube_n_pulse[,1,]), cube_n_pulse[,2,1], 'green')
+# m_error <- calc_error(cube_n_pulse[,1,])
+# arrows(nodes,cube_n_pulse[,2,1] - m_error,nodes,cube_n_pulse[,2,1] + m_error, col='green', code=3,angle=90,length=0.05)
 points(nodes, cube_f_pulse[,2,1], type='b', col='red', lwd=2, pch=17)
-m_error <- calc_error(cube_f_pulse[,1,])
-arrows(nodes,cube_f_pulse[,2,1] - m_error,nodes,cube_f_pulse[,2,1] + m_error, col='red',  code=3,angle=90,length=0.05)
+# m_error <- calc_error(cube_f_pulse[,1,])
+# arrows(nodes,cube_f_pulse[,2,1] - m_error,nodes,cube_f_pulse[,2,1] + m_error, col='red',  code=3,angle=90,length=0.05)
 # grid(col='black')
 legend('topleft', legend=c('Média', 'Nearest', 'Farthest'), lwd=2, pch=c(19, 18, 17), title='Parametros', bg='white', col=c('blue', 'green', 'red'))
 dev.off()
