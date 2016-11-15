@@ -18,14 +18,13 @@ calc_result <- function(cube){
 
 
 
-calc_var <- function(matrix){
+calc_error <- function(matrix){
   result <- array(dim=c(nrow(matrix)))
   for(i in 1:nrow(matrix)){
     n <- length(matrix[i,2:(as.integer(args[1])+1)])
-    media <- mean(matrix[i,2:(as.integer(args[1])+1)])
-    variancia <- var(matrix[i,2:(as.integer(args[1])+1)])
-    conf <- 0.95
-    result[i] <- (conf/2) * (variancia/sqrt(n))
+    sd <- sd(matrix[i,2:(as.integer(args[1])+1)])
+    coef_de_conf <- 1.96
+    result[i] <- (coef_de_conf) * (sd/sqrt(n))
   }
   return(result)
 
@@ -142,13 +141,13 @@ cube_f_pulse <- calc_result(cube_f_pulse)
 
 pdf("Throughput_static_pulse.pdf")
 plot(nodes, cube_cp_pulse[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1])), max(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1]))), ylab='Throughput em kbits', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput pulse')
-m_error <- calc_var(cube_cp_pulse[,1,])
+m_error <- calc_error(cube_cp_pulse[,1,])
 arrows(nodes,cube_cp_pulse[,1,1] - m_error,nodes,cube_cp_pulse[,1,1] + m_error, col="blue", code=3,angle=90,length=0.05)
 points(nodes, cube_n_pulse[,2,1], type='b', col='green', lwd=2, pch=18)
-m_error <- calc_var(cube_n_pulse[,1,])
+m_error <- calc_error(cube_n_pulse[,1,])
 arrows(nodes,cube_n_pulse[,2,1] - m_error,nodes,cube_n_pulse[,2,1] + m_error, col='green', code=3,angle=90,length=0.05)
 points(nodes, cube_f_pulse[,2,1], type='b', col='red', lwd=2, pch=17)
-m_error <- calc_var(cube_f_pulse[,1,])
+m_error <- calc_error(cube_f_pulse[,1,])
 arrows(nodes,cube_f_pulse[,2,1] - m_error,nodes,cube_f_pulse[,2,1] + m_error, col='red',  code=3,angle=90,length=0.05)
 # grid(col='black')
 legend('topleft', legend=c('Média', 'Nearest', 'Farthest'), lwd=2, pch=c(19, 18, 17), title='Parametros', bg='white', col=c('blue', 'green', 'red'))
