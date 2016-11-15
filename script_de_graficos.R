@@ -5,6 +5,33 @@ if (length(args)==0) {
   args[1] = "5"
 }
 
+
+calc_result <- function(cube){
+
+  for (i in 1:nrow(cube) ){
+    for (j in 1:ncol(cube)) {
+      cube[i,j,1] <- mean(cube[i,j,2:(as.integer(args[1])+1)])
+    }
+  }
+  return (cube)
+}
+
+
+
+calc_var <- function(matrix){
+  result <- array(dim=c(nrow(matrix)))
+  for(i in 1:nrow(matrix)){
+    n <- length(matrix[i,2:(as.integer(args[1])+1)])
+    media <- mean(matrix[i,2:(as.integer(args[1])+1)])
+    variancia <- var(matrix[i,2:(as.integer(args[1])+1)])
+    conf <- 0.95
+    result[i] <- (conf/2) * (variancia/sqrt(n))
+  }
+  return(result)
+
+}
+
+
 rw_cbr   <- "RandomWalk_cbr.csv"
 cp_cbr   <- "ConstantPosition_cbr.csv"
 rw_pulse <- "RandomWalk_pulse.csv"
@@ -14,28 +41,42 @@ n_pulse  <- "Nearest_node_pulse.csv"
 f_cbr    <- "Farthest_node_cbr.csv"
 f_pulse  <- "Farthest_node_pulse.csv"
 
-cube_rw_cbr <- array(dim=c(8, 3, args[1]))
-cube_cp_cbr <- array(dim=c(8, 3, args[1]))
-cube_rw_pulse <- array(dim=c(8, 3, args[1]))
-cube_cp_pulse <- array(dim=c(8, 3, args[1]))
-cube_n_cbr <- array(dim=c(8, 4, args[1]))
-cube_n_pulse <- array(dim=c(8, 4, args[1]))
-cube_f_cbr <- array(dim=c(8, 4, args[1]))
-cube_f_pulse <- array(dim=c(8, 4, args[1]))
+cube_rw_cbr <- array(dim=c(8, 3, as.integer(args[1])+1))
+cube_cp_cbr <- array(dim=c(8, 3, as.integer(args[1])+1))
+cube_rw_pulse <- array(dim=c(8, 3, as.integer(args[1])+1))
+cube_cp_pulse <- array(dim=c(8, 3, as.integer(args[1])+1))
+cube_n_cbr <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_n_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_f_cbr <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_f_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
+
+
+
+
 
 for (i in 1:args[1]){
   # print(paste("Execute ", i, sep=" "))
   # system(paste("Rscript script_de_execucao.R", i, sep=" "))
-  cube_rw_cbr[1:8,1:3,i] <- data.matrix( read.csv(file=paste(i, rw_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_cp_cbr[1:8,1:3,i] <- data.matrix( read.csv(file=paste(i, cp_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_rw_pulse[1:8,1:3,i] <- data.matrix( read.csv(file=paste(i, rw_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_cp_pulse[1:8,1:3,i] <- data.matrix( read.csv(file=paste(i, cp_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_n_cbr[1:8,1:4,i] <- data.matrix( read.csv(file=paste(i, n_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
-  cube_n_pulse[1:8,1:4,i] <- data.matrix( read.csv(file=paste(i, n_pulse , sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
-  cube_f_cbr[1:8,1:4,i] <- data.matrix( read.csv(file=paste(i, f_cbr,sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
-  cube_f_pulse[1:8,1:4,i] <- data.matrix( read.csv(file=paste(i, f_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_rw_cbr[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, rw_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
+  cube_cp_cbr[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, cp_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
+  cube_rw_pulse[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, rw_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
+  cube_cp_pulse[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, cp_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
+  cube_n_cbr[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, n_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_n_pulse[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, n_pulse , sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_f_cbr[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, f_cbr,sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_f_pulse[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, f_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
 }
 nodes <- array(1:8)*5
+
+cube_rw_cbr <- calc_result(cube_rw_cbr)
+cube_cp_cbr <- calc_result(cube_cp_cbr)
+cube_rw_pulse <- calc_result(cube_rw_pulse)
+cube_cp_pulse <- calc_result(cube_cp_pulse)
+cube_n_cbr <- calc_result(cube_n_cbr)
+cube_n_pulse <- calc_result(cube_n_pulse)
+cube_f_cbr <- calc_result(cube_f_cbr)
+cube_f_pulse <- calc_result(cube_f_pulse)
+
 
 #
 # pdf("Delay_static.pdf")
@@ -99,18 +140,19 @@ nodes <- array(1:8)*5
 #
 
 
-
 pdf("Throughput_static_pulse.pdf")
 plot(nodes, cube_cp_pulse[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1])), max(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1]))), ylab='Throughput em kbits', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput pulse')
-arrows(nodes,cube_cp_pulse[,1,1]-10,nodes,cube_cp_pulse[,1,1]+10, col="blue", code=3,angle=90,length=0.05)
+m_error <- calc_var(cube_cp_pulse[,1,])
+arrows(nodes,cube_cp_pulse[,1,1] - m_error,nodes,cube_cp_pulse[,1,1] + m_error, col="blue", code=3,angle=90,length=0.05)
 points(nodes, cube_n_pulse[,2,1], type='b', col='green', lwd=2, pch=18)
-arrows(nodes,cube_n_pulse[,2,1]-10,nodes,cube_n_pulse[,2,1]+10, col='green', code=3,angle=90,length=0.05)
+m_error <- calc_var(cube_n_pulse[,1,])
+arrows(nodes,cube_n_pulse[,2,1] - m_error,nodes,cube_n_pulse[,2,1] + m_error, col='green', code=3,angle=90,length=0.05)
 points(nodes, cube_f_pulse[,2,1], type='b', col='red', lwd=2, pch=17)
-arrows(nodes,cube_f_pulse[,2,1]-10,nodes,cube_f_pulse[,2,1]+10, col='red',  code=3,angle=90,length=0.05)
+m_error <- calc_var(cube_f_pulse[,1,])
+arrows(nodes,cube_f_pulse[,2,1] - m_error,nodes,cube_f_pulse[,2,1] + m_error, col='red',  code=3,angle=90,length=0.05)
 # grid(col='black')
 legend('topleft', legend=c('Média', 'Nearest', 'Farthest'), lwd=2, pch=c(19, 18, 17), title='Parametros', bg='white', col=c('blue', 'green', 'red'))
 dev.off()
-
 
 #
 # pdf("DelayPackets_static_CBR.pdf")
@@ -183,6 +225,7 @@ dev.off()
 # print (media-result)
 #
 # print (ic.m(teste))
+
 #
 #
 # pdf("DelayPackets_static_pulse.pdf")
