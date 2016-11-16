@@ -6,7 +6,11 @@ if (length(args)==0) {
 }
 
 if (length(args)==1) {
-  args[2] = T
+  args[2] = "1"
+}
+
+if (length(args)==2) {
+  args[3] = T
 }
 
 
@@ -53,8 +57,8 @@ cube_n_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
 cube_f_cbr <- array(dim=c(8, 4, as.integer(args[1])+1))
 cube_f_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
 
-for (i in 1:args[1]){
-  if (args[2]){
+for (i in args[2]:args[1]){
+  if (args[3]){
     print(paste("Execute ", i, sep=" "))
     system(paste("Rscript script_de_execucao.R", i, sep=" "))
   }
