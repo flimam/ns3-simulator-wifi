@@ -216,7 +216,7 @@ void installTCPCommunication(NodeContainer &nodes, NodeContainer &p2pnode, Ipv4I
     sinkApp.Add (sinkHelper.Install (p2pnode.Get(0)));
     sinkApp.Start (Seconds (0.0));
     OnOffHelper server ("ns3::TcpSocketFactory", (InetSocketAddress (p2pdeviceIP.GetAddress(0), i+10000)));
-    server.SetAttribute ("PacketSize", UintegerValue (1484));
+    server.SetAttribute ("PacketSize", UintegerValue (packetsize));
     server.SetAttribute ("OnTime", StringValue(ossOnTime.str()));
     server.SetAttribute ("OffTime", StringValue(ossOffTime.str()));
     server.SetAttribute ("DataRate", StringValue ("512kbps"));
