@@ -86,8 +86,9 @@ cube_f_pulse <- calc_result(cube_f_pulse)
 
 pdf("Results/Throughput_static.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,1,1]), range(cube_n_cbr[,2,1]), range(cube_f_cbr[,2,1]), range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1])), max(range(cube_cp_cbr[,1,1]), range(cube_n_cbr[,2,1]), range(cube_f_cbr[,2,1]), range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1]))), ylab='Throughput em kbps', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput em Nós Estáticos')
+min <- min(range(cube_cp_cbr[,1,1]-calc_error(cube_cp_cbr[,1,])), range(cube_n_cbr[,2,1]-calc_error(cube_n_cbr[,2,])), range(cube_f_cbr[,2,1]-calc_error(cube_f_pulse[,2,])), range(cube_cp_pulse[,1,1]-calc_error(cube_cp_pulse[,1,])), range(cube_n_pulse[,2,1]-calc_error(cube_n_pulse[,2,])), range(cube_f_pulse[,2,1]-calc_error(cube_f_pulse[,2,])))
+max <- max(range(cube_cp_cbr[,1,1]+calc_error(cube_cp_cbr[,1,])), range(cube_n_cbr[,2,1]+calc_error(cube_n_cbr[,2,])), range(cube_f_cbr[,2,1]+calc_error(cube_f_pulse[,2,])), range(cube_cp_pulse[,1,1]+calc_error(cube_cp_pulse[,1,])), range(cube_n_pulse[,2,1]+calc_error(cube_n_pulse[,2,])), range(cube_f_pulse[,2,1]+calc_error(cube_f_pulse[,2,])))
+plot(nodes, cube_cp_cbr[,1,1], xlab='Número de nós', ylim=c(min, max), ylab='Throughput em kbps', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput em Nós Estáticos')
 print_error(calc_error(cube_cp_cbr[,1,]), cube_cp_cbr[,1,1], 'blue')
 
 points(nodes, cube_n_cbr[,2,1], type='b', col='green', lwd=2, pch=18)
@@ -111,8 +112,9 @@ dev.off()
 
 pdf("Results/Delay_static.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,2,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,2,1]), range(cube_n_cbr[,3,1]), range(cube_f_cbr[,3,1]), range(cube_cp_pulse[,2,1]), range(cube_n_pulse[,3,1]), range(cube_f_pulse[,3,1])), max(range(cube_cp_cbr[,2,1]), range(cube_n_cbr[,3,1]), range(cube_f_cbr[,3,1]), range(cube_cp_pulse[,2,1]), range(cube_n_pulse[,3,1]), range(cube_f_pulse[,3,1]))), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay em Nós Estáticos')
+min <- min(range(cube_cp_cbr[,2,1]-calc_error(cube_cp_cbr[,2,])), range(cube_n_cbr[,3,1]-calc_error(cube_n_cbr[,3,])), range(cube_f_cbr[,3,1]-calc_error(cube_f_cbr[,3,])), range(cube_cp_pulse[,2,1]-calc_error(cube_cp_pulse[,2,])), range(cube_n_pulse[,3,1]-calc_error(cube_n_pulse[,3,])), range(cube_f_pulse[,3,1]-calc_error(cube_f_pulse[,3,])))
+max <- max(range(cube_cp_cbr[,2,1]+calc_error(cube_cp_cbr[,2,])), range(cube_n_cbr[,3,1]+calc_error(cube_n_cbr[,3,])), range(cube_f_cbr[,3,1]+calc_error(cube_f_cbr[,3,])), range(cube_cp_pulse[,2,1]+calc_error(cube_cp_pulse[,2,])), range(cube_n_pulse[,3,1]+calc_error(cube_n_pulse[,3,])), range(cube_f_pulse[,3,1]+calc_error(cube_f_pulse[,3,])))
+plot(nodes, cube_cp_cbr[,2,1], xlab='Número de nós', ylim=c(min, max), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Delay em Nós Estáticos')
 print_error(calc_error(cube_cp_cbr[,2,]), cube_cp_cbr[,2,1], 'blue')
 
 points(nodes, cube_n_cbr[,3,1], type='b', col='green', lwd=2, pch=18)
@@ -136,8 +138,9 @@ dev.off()
 
 pdf("Results/LostPackets_static.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,3,1]), range(cube_n_cbr[,4,1]), range(cube_f_cbr[,4,1]), range(cube_cp_pulse[,3,1]), range(cube_n_pulse[,4,1]), range(cube_f_pulse[,4,1])), max(range(cube_cp_cbr[,3,1]), range(cube_n_cbr[,4,1]), range(cube_f_cbr[,4,1]), range(cube_cp_pulse[,3,1]), range(cube_n_pulse[,4,1]), range(cube_f_pulse[,4,1]))), ylab='Perda de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Perda de Pacotes em Nós Estáticos')
+min <- min(range(cube_cp_cbr[,3,1]-calc_error(cube_cp_cbr[,3,])), range(cube_n_cbr[,4,1]-calc_error(cube_n_cbr[,4,])), range(cube_f_cbr[,4,1]-calc_error(cube_f_cbr[,4,])), range(cube_cp_pulse[,3,1]-calc_error(cube_cp_pulse[,3,])), range(cube_n_pulse[,4,1]-calc_error(cube_n_pulse[,4,])), range(cube_f_pulse[,4,1]-calc_error(cube_f_pulse[,4,])))
+max <- max(range(cube_cp_cbr[,3,1]+calc_error(cube_cp_cbr[,3,])), range(cube_n_cbr[,4,1]+calc_error(cube_n_cbr[,4,])), range(cube_f_cbr[,4,1]+calc_error(cube_f_cbr[,4,])), range(cube_cp_pulse[,3,1]+calc_error(cube_cp_pulse[,3,])), range(cube_n_pulse[,4,1]+calc_error(cube_n_pulse[,4,])), range(cube_f_pulse[,4,1]+calc_error(cube_f_pulse[,4,])))
+plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min, max), ylab='Perda de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Perda de Pacotes em Nós Estáticos')
 print_error(calc_error(cube_cp_cbr[,3,]), cube_cp_cbr[,3,1], 'blue')
 
 points(nodes, cube_n_cbr[,4,1], type='b', col='green', lwd=2, pch=18)
@@ -200,8 +203,9 @@ dev.off()
 
 pdf("Results/LostPackets_CBR_pulse.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,3,1]), range(cube_cp_pulse[,3,1]), range(cube_rw_cbr[,3,1]), range(cube_rw_pulse[,3,1])), max(range(cube_cp_cbr[,3,1]), range(cube_cp_pulse[,3,1]), range(cube_rw_cbr[,3,1]), range(cube_rw_pulse[,3,1]))), ylab='Perda média de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Perda Média de Pacotes')
+min <- min(range(cube_cp_cbr[,3,1]-calc_error(cube_cp_cbr[,3,])), range(cube_cp_pulse[,3,1]-calc_error(cube_cp_pulse[,3,])), range(cube_rw_cbr[,3,1]-calc_error(cube_rw_cbr[,3,])), range(cube_rw_pulse[,3,1]-calc_error(cube_rw_pulse[,3,])))
+max <- max(range(cube_cp_cbr[,3,1]+calc_error(cube_cp_cbr[,3,])), range(cube_cp_pulse[,3,1]+calc_error(cube_cp_pulse[,3,])), range(cube_rw_cbr[,3,1]+calc_error(cube_rw_cbr[,3,])), range(cube_rw_pulse[,3,1]+calc_error(cube_rw_pulse[,3,])))
+plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min, max), ylab='Perda média de pacotes', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Perda Média de Pacotes')
 print_error(calc_error(cube_cp_cbr[,3,]), cube_cp_cbr[,3,1], 'blue')
 
 points(nodes, cube_rw_cbr[,3,1], type='b', col='green', lwd=2, pch=18)
@@ -219,8 +223,9 @@ dev.off()
 
 pdf("Results/Throughput_static_CBR.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,1,1]), range(cube_n_cbr[,2,1]), range(cube_f_cbr[,2,1])), max(range(cube_cp_cbr[,1,1]), range(cube_n_cbr[,2,1]), range(cube_f_cbr[,2,1]))), ylab='Throughput em kbts', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='CBR -Throughput em Nós Estáticos')
+min <- min(range( (cube_cp_cbr[,1,1]-calc_error(cube_cp_cbr[,1,])) - 10 ), range(cube_n_cbr[,2,1]-calc_error(cube_n_cbr[,2,])), range(cube_f_cbr[,2,1]-calc_error(cube_f_cbr[,2,])))
+max <- max(range( (cube_cp_cbr[,1,1]+calc_error(cube_cp_cbr[,1,])) + 10), range(cube_n_cbr[,2,1]+calc_error(cube_n_cbr[,2,])), range(cube_f_cbr[,2,1]+calc_error(cube_f_cbr[,2,])))
+plot(nodes, cube_cp_cbr[,1,1], xlab='Número de nós', ylim=c(min, max), ylab='Throughput em kbts', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='CBR -Throughput em Nós Estáticos')
 print_error(calc_error(cube_cp_cbr[,1,]), cube_cp_cbr[,1,1], 'blue')
 
 points(nodes, cube_n_cbr[,2,1], type='b', col='green', lwd=2, pch=18)
@@ -235,8 +240,9 @@ dev.off()
 
 pdf("Results/Throughput_static_pulse.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_pulse[,1,1], xlab='Número de nós', ylim=c(min(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1])), max(range(cube_cp_pulse[,1,1]), range(cube_n_pulse[,2,1]), range(cube_f_pulse[,2,1]))), ylab='Throughput em kbits', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Rajada - Throughput em Nós Estáticos')
+min <- min(range(cube_cp_pulse[,1,1]-calc_error(cube_cp_pulse[,1,])), range(cube_n_pulse[,2,1]-calc_error(cube_n_pulse[,2,])), range(cube_f_pulse[,2,1]-calc_error(cube_f_pulse[,2,])))
+max <- max(range(cube_cp_pulse[,1,1]+calc_error(cube_cp_pulse[,1,])), range(cube_n_pulse[,2,1]+calc_error(cube_n_pulse[,2,])), range(cube_f_pulse[,2,1]+calc_error(cube_f_pulse[,2,])))
+plot(nodes, cube_cp_pulse[,1,1], xlab='Número de nós', ylim=c(min, max), ylab='Throughput em kbits', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Rajada - Throughput em Nós Estáticos')
 print_error(calc_error(cube_cp_pulse[,1,]), cube_cp_pulse[,1,1], "blue")
 
 points(nodes, cube_n_pulse[,2,1], type='b', col='green', lwd=2, pch=18)
@@ -251,8 +257,9 @@ dev.off()
 
 pdf("Results/DelayPackets_static_CBR.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,2,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,2,1]), range(cube_n_cbr[,3,1]), range(cube_f_cbr[,3,1])), max(range(cube_cp_cbr[,2,1]), range(cube_n_cbr[,3,1]), range(cube_f_cbr[,3,1]))), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='CBR - Delay em Nós Estáticos')
+min <- min(range(cube_cp_cbr[,2,1]-calc_error(cube_cp_cbr[,2,])), range(cube_n_cbr[,3,1]-calc_error(cube_n_cbr[,3,])), range(cube_f_cbr[,3,1]-calc_error(cube_f_cbr[,3,])))
+max <- max(range(cube_cp_cbr[,2,1]+calc_error(cube_cp_cbr[,2,])), range(cube_n_cbr[,3,1]+calc_error(cube_n_cbr[,3,])), range(cube_f_cbr[,3,1]+calc_error(cube_f_cbr[,3,])))
+plot(nodes, cube_cp_cbr[,2,1], xlab='Número de nós', ylim=c(min, max), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='CBR - Delay em Nós Estáticos')
 print_error(calc_error(cube_cp_cbr[,2,]), cube_cp_cbr[,2,1], 'blue')
 
 points(nodes, cube_n_cbr[,3,1], type='b', col='green', lwd=2, pch=18)
@@ -267,8 +274,9 @@ dev.off()
 
 pdf("Results/DelayPackets_static_pulse.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_pulse[,2,1], xlab='Número de nós', ylim=c(min(range(cube_cp_pulse[,2,1]), range(cube_n_pulse[,3,1]), range(cube_f_pulse[,3,1])), max(range(cube_cp_pulse[,2,1]), range(cube_n_pulse[,3,1]), range(cube_f_pulse[,3,1]))), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Rajada - Delay em Nós Estáticos')
+min <- min(range(cube_cp_pulse[,2,1]-calc_error(cube_cp_pulse[,2,])), range(cube_n_pulse[,3,1]-calc_error(cube_n_pulse[,3,])), range(cube_f_pulse[,3,1]-calc_error(cube_f_pulse[,3,])))
+max <- max(range(cube_cp_pulse[,2,1]+calc_error(cube_cp_pulse[,2,])), range(cube_n_pulse[,3,1]+calc_error(cube_n_pulse[,3,])), range(cube_f_pulse[,3,1]+calc_error(cube_f_pulse[,3,])))
+plot(nodes, cube_cp_pulse[,2,1], xlab='Número de nós', ylim=c(min, max), ylab='Delay em ms', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Rajada - Delay em Nós Estáticos')
 print_error(calc_error(cube_cp_pulse[,2,]), cube_cp_pulse[,2,1], 'blue')
 
 points(nodes, cube_n_pulse[,3,1], type='b', col='green', lwd=2, pch=18)
@@ -283,8 +291,9 @@ dev.off()
 
 pdf("Results/LostPackets_static_CBR.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
-
-plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,3,1]), range(cube_n_cbr[,4,1]), range(cube_f_cbr[,4,1])), max(range(cube_cp_cbr[,3,1]), range(cube_n_cbr[,4,1]), range(cube_f_cbr[,4,1]))), ylab='Pacotes perdidos', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='CBR - Perda de Pacotes em Nós Estáticos')
+min <- min(range(cube_cp_cbr[,3,1]-calc_error(cube_cp_cbr[,3,])), range(cube_n_cbr[,4,1]-calc_error(cube_n_cbr[,4,])), range(cube_f_cbr[,4,1]-calc_error(cube_f_cbr[,4,])))
+max <- max(range(cube_cp_cbr[,3,1]+calc_error(cube_cp_cbr[,3,])), range(cube_n_cbr[,4,1]+calc_error(cube_n_cbr[,4,])), range(cube_f_cbr[,4,1]+calc_error(cube_f_cbr[,4,])))
+plot(nodes, cube_cp_cbr[,3,1], xlab='Número de nós', ylim=c(min, max), ylab='Pacotes perdidos', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='CBR - Perda de Pacotes em Nós Estáticos')
 print_error(calc_error(cube_cp_cbr[,3,]), cube_cp_cbr[,3,1], 'blue')
 
 points(nodes, cube_n_cbr[,4,1], type='b', col='green', lwd=2, pch=18)
