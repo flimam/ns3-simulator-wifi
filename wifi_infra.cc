@@ -270,7 +270,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
       delay = ((delay > 0) ? delay : 0);
       meanDelayPackets += delay;
-      meanLostPackets += i->second.lostPackets;
+      meanLostPackets += i->second.lostPackets/((i->second.timeLastTxPacket - i->second.timeFirstTxPacket).GetSeconds());
 
       if(!mobility){
         if(devicesIP.GetAddress(nearestNode) == t.sourceAddress){
@@ -306,6 +306,11 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       }
     }
   }
+
+  std::stringstream ss;
+  ss <<prefix<<"_"<<"throughput_all.csv";
+  f = fopen(ss.str().c_str(), "a");
+  fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
 
   meanThroughput /= nNodes;
   meanDelayPackets /= nNodes;
@@ -348,11 +353,6 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
 }
 
 void run (){
-  //TODO TODO TODO
-  // 0. Enable or disable CTS/RTS
-  // Hidden station experiment with RTS/CTS disabled, if enableCtsRts is FALSE
-  UintegerValue ctsThr = (enableCtsRts ? UintegerValue (100) : UintegerValue (2200));
-  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
 
   NodeContainer apnode, nodes, p2pnode;
   NetDeviceContainer apdevice, devices, p2pdevice;
