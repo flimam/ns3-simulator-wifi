@@ -230,6 +230,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
 
   double throughput = 0;
   double delay = 0;
+  double sumThroughput = 0.0;
   double meanThroughput = 0.0;
   double meanDelayPackets = 0.0;
   double meanLostPackets = 0.0;
@@ -266,7 +267,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       }
 
       throughput = ((throughput > 0) ? throughput : 0);
-      meanThroughput += throughput;
+      sumThroughput += throughput;
       delay = i->second.delaySum.GetSeconds()/i->second.rxPackets;
       delay = ((delay > 0) ? delay : 0);
       meanDelayPackets += delay;
@@ -307,12 +308,7 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
     }
   }
 
-  std::stringstream ss;
-  ss <<prefix<<"_"<<"throughput_all.csv";
-  f = fopen(ss.str().c_str(), "a");
-  fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
-
-  meanThroughput /= nNodes;
+  meanThroughput  = sumThroughput / nNodes;
   meanDelayPackets /= nNodes;
   meanLostPackets /= nNodes;
 
@@ -326,13 +322,13 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       std::stringstream ss;
       ss <<prefix<<"_"<<"RandomWalk_cbr.csv";
       f = fopen(ss.str().c_str(), "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets, sumThroughput);
     }
     else{
       std::stringstream ss;
       ss <<prefix<<"_"<<"ConstantPosition_cbr.csv";
       f = fopen(ss.str().c_str(), "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets, sumThroughput);
     }
   }
   else{
@@ -340,13 +336,13 @@ void buildStatistics(FlowMonitorHelper &flowmon, Ptr<FlowMonitor> &monitor, Ipv4
       std::stringstream ss;
       ss <<prefix<<"_"<<"RandomWalk_pulse.csv";
       f = fopen(ss.str().c_str(), "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets, sumThroughput);
     }
     else{
       std::stringstream ss;
       ss <<prefix<<"_"<<"ConstantPosition_pulse_cbr.csv";
       f = fopen(ss.str().c_str(), "a");
-      fprintf(f, "%d;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets);
+      fprintf(f, "%d;%.2f;%.2f;%.2f;%.2f\n", nNodes, meanThroughput/1024, meanDelayPackets, meanLostPackets, sumThroughput);
     }
   }
   fclose(f);

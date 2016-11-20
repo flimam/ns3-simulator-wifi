@@ -31,6 +31,9 @@ calc_error <- function(matrix){
     sd <- sd(matrix[i,2:(as.integer(args[1])+1)])
     coef_de_conf <- 1.96
     result[i] <- (coef_de_conf) * (sd/sqrt(n))
+    if (is.na(result[i])){
+      result[i] <- 0
+    }
   }
   return(result)
 }
@@ -48,24 +51,24 @@ n_pulse  <- "Nearest_node_pulse.csv"
 f_cbr    <- "Farthest_node_cbr.csv"
 f_pulse  <- "Farthest_node_pulse.csv"
 
-cube_rw_cbr <- array(dim=c(8, 3, as.integer(args[1])+1))
-cube_cp_cbr <- array(dim=c(8, 3, as.integer(args[1])+1))
-cube_rw_pulse <- array(dim=c(8, 3, as.integer(args[1])+1))
-cube_cp_pulse <- array(dim=c(8, 3, as.integer(args[1])+1))
-cube_n_cbr <- array(dim=c(8, 4, as.integer(args[1])+1))
-cube_n_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
-cube_f_cbr <- array(dim=c(8, 4, as.integer(args[1])+1))
-cube_f_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_rw_cbr   <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_cp_cbr   <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_rw_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_cp_pulse <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_n_cbr    <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_n_pulse  <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_f_cbr    <- array(dim=c(8, 4, as.integer(args[1])+1))
+cube_f_pulse  <- array(dim=c(8, 4, as.integer(args[1])+1))
 
 for (i in args[2]:args[1]){
   if (args[3]){
     print(paste("Execute ", i, sep=" "))
     system(paste("Rscript script_de_execucao.R", i, sep=" "))
   }
-  cube_rw_cbr[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, rw_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_cp_cbr[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, cp_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_rw_pulse[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, rw_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
-  cube_cp_pulse[1:8,1:3,i+1] <- data.matrix( read.csv(file=paste(i, cp_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA)) )
+  cube_rw_cbr[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, rw_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_cp_cbr[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, cp_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_rw_pulse[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, rw_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
+  cube_cp_pulse[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, cp_pulse, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
   cube_n_cbr[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, n_cbr, sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
   cube_n_pulse[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, n_pulse , sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
   cube_f_cbr[1:8,1:4,i+1] <- data.matrix( read.csv(file=paste(i, f_cbr,sep="_"), sep=";", header=F, colClasses=c("NULL", NA, NA,NA,NA)) )
@@ -163,6 +166,24 @@ dev.off()
 
 
 #Graficos principais
+pdf("Results/Throughput_general_CBR_pulse.pdf")
+par(mar = c(10, 4, 3, 1), xpd=T)
+
+plot(nodes, cube_cp_cbr[,4,1], xlab='Número de nós', ylim=c(min(range(cube_cp_cbr[,4,1]), range(cube_cp_pulse[,4,1]), range(cube_rw_cbr[,1,1]), range(cube_rw_pulse[,4,1])), max(range(cube_cp_cbr[,4,1]), range(cube_cp_pulse[,4,1]), range(cube_rw_cbr[,1,1]), range(cube_rw_pulse[,4,1]))), ylab='Throughput da rede em kbts', xaxp=c(5,40,7), type="b", col="blue", lwd=2, pch=19, main='Throughput total')
+print_error(calc_error(cube_cp_cbr[,4,]), cube_cp_cbr[,4,1], 'blue')
+
+points(nodes, cube_rw_cbr[,4,1], type='b', col='green', lwd=2, pch=18)
+print_error(calc_error(cube_rw_cbr[,4,]), cube_rw_cbr[,4,1], 'green')
+
+points(nodes, cube_cp_pulse[,4,1], type='b', col='red', lwd=2, pch=17)
+print_error(calc_error(cube_cp_pulse[,4,]), cube_cp_pulse[,4,1], 'red')
+
+points(nodes, cube_rw_pulse[,4,1], type='b', col='orange', lwd=2, pch=16)
+print_error(calc_error(cube_rw_pulse[,4,]), cube_rw_pulse[,4,1], 'orange')
+
+legend('bottom', legend=c('CBR/Estáticos', 'CBR/Móveis', 'Rajada/Estáticos', 'Rajada/Móveis'), lwd=2, pch=c(19, 18, 17, 16), title='Protocolo/mobilidade dos nós', bg='white', col=c('blue','green', 'red', 'orange'), ncol=2, inset=c(0,-0.4))
+dev.off()
+
 pdf("Results/Throughput_CBR_pulse.pdf")
 par(mar = c(10, 4, 3, 1), xpd=T)
 
