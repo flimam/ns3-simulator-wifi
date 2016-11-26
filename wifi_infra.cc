@@ -99,7 +99,7 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
       "Bounds", BoxValue (Box (0, 200, 0, 200, 0, 1)),
       "TimeStep", TimeValue (Seconds (0.5)),
       "Alpha", DoubleValue (0.85),
-      "MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=2|Max=7]"),
+      "MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=6|Max=17]"),
       "MeanDirection", StringValue ("ns3::UniformRandomVariable[Min=0|Max=6.2]"),
       "MeanPitch", StringValue ("ns3::UniformRandomVariable[Min=0.05|Max=0.05]"),
       "NormalVelocity", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
