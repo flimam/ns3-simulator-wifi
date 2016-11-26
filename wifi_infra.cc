@@ -96,7 +96,7 @@ void setMobility(NodeContainer &apnode, NodeContainer &nodes) {
 
     // MobilityHelper mobility;
     mobilityh.SetMobilityModel ("ns3::GaussMarkovMobilityModel",
-      "Bounds", BoxValue (Box (0, 200, 0, 200, 0, 1)),
+      "Bounds", BoxValue (Box (0, 100, 0, 100, 0, 1)),
       "TimeStep", TimeValue (Seconds (0.5)),
       "Alpha", DoubleValue (0.85),
       "MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=6|Max=17]"),
